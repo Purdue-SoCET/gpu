@@ -71,6 +71,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     csr = tbs(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
-    regfile = [[0 for i in range(32)] for j in range(32)]
+    # regfile = [[0 for i in range(32)] for j in range(32)]
 
     # print_csr(csr) # uncomment to print out csr
