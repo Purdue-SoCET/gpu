@@ -4,7 +4,7 @@
 
 Please follow the following file structure:
 
-    - funcsim/
+    - emulator/
         - docs/              # document for the simulator
             - eg: isa.txt
 
@@ -29,7 +29,7 @@ Please follow the following file structure:
 To use the SoCET GPU Emulator, first activate the Python virtual environment by running the following commands in a Linux terminal:
 
 ```
-cd ./gpu_sim/funcsim
+cd ./gpu_sim/emulator
 source venv/bin/activate
 ```
 
