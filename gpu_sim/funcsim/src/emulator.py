@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-
+from reg_file.py import *
 # print csr helper
 def print_csr(csr):
     for i in range(len(csr["x"])):
