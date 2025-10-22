@@ -25,10 +25,16 @@ def tbs(x, y, z):
 # actual emulator
 def emulator(csr, regfile, input_file, mem):
     # PC IS NOT IMPLEMENTED CURRENTLY ALL, JUMP AND LINK HAS NO FUNCTIONALITY YET
-    f = open(input_file)
-    
-    while(line := f.readline()):
-        line = line.strip()
+    with open(input_file, "r") as f:
+        instructions = f.readlines()
+
+    ### STARTING PC IS ASSUMED ZERO FOR NOW BUT UPDATE IT ACCORDING TO WHAT SOFTWARE GIVES US
+    pc = 0
+    halt = False
+
+    while not halt and pc < len(instructions):
+        line = instructions[pc].strip()
+
         #compiler is big endian:MSB at smallest addr. That, or you can consider
         #no, compiler just put opcode, LSB, at the left for the teal card. So it is small endian...
         #python parses with highest index at the left 
@@ -43,7 +49,7 @@ def emulator(csr, regfile, input_file, mem):
         rs1 = Bits(bin=line[13:19], length=6) #18:13
         rd = Bits(bin=line[19:25], length=6) #12:7
         # imm = Bits(bin=line[]) #
-        match Instr_Type(opcode):
+        match Instr_Type(instr_type):
             case Instr_Type.R_TYPE_0:
                 op = R_Op_0(funct3)
                 instr = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
