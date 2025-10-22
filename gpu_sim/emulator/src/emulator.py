@@ -4,6 +4,7 @@ from reg_file import *
 from instr import *
 from warp import *
 from mem import *
+from custom_enums import *
 # print csr helper
 def print_csr(csr):
     for i in range(len(csr["x"])):
@@ -29,28 +30,40 @@ def emulator(csr, regfile, input_file, mem):
     while(line := f.readline()):
         line = line.strip()
         #compiler is big endian:MSB at smallest addr
-        instr_type = Bits(bin=line[29:32], length=3) # bits 31:29
-        funct = Bits(bin=line[25:29], length=4) # bits 28:25
+        instr_type = Bits(bin=line[28:32], length=4) # bits 31:28
+        funct = Bits(bin=line[25:28], length=3) # bits 27:25
         # print(f'instr_type={instr_type}')
         # print(f'funct={funct.bin}')
         #(rs1, rs2, rd, imm) = parser.py
         # print({Instr_Type.R_TYPE.value})
         match Instr_Type(instr_type):
-            case Instr_Type.R_TYPE:
-                print("rtype")  
-                op = R_Op(funct)
+            case Instr_Type.R_TYPE_0:
+                op = R_Op_0(funct)
                 rs2 = Bits(bin=line[8:13]) #12:8
                 rs1 = Bits(bin=line[13:19]) #18:13
                 rd = Bits(bin=line[19:25]) #24:19
-                instr = R_Instr(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                
+                instr = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print("rtype_0")  
+            case Instr_Type.R_TYPE_1:
+                op = R_Op_1(funct)
+                rs2 = Bits(bin=line[8:13]) #12:8
+                rs1 = Bits(bin=line[13:19]) #18:13
+                rd = Bits(bin=line[19:25]) #24:19
+                instr = R_Instr_1(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print("rtype_1")  
+            case Instr_Type.I_TYPE_0:
+                print("itype_0")
             case Instr_Type.I_TYPE_1:
                 print("itype_1")
             case Instr_Type.I_TYPE_2:
                 print("itype_2")
-            case Instr_Type.S_TYPE:
-                print("stype")
-            case Instr_Type.B_TYPE:
+            case Instr_Type.S_TYPE_0:
+                print("stype_0")
+            case Instr_Type.S_TYPE_1:
+                print("stype_1")
+            case Instr_Type.B_TYPE_0:
+                print("btype")
+            case Instr_Type.B_TYPE_1:
                 print("btype")
             case Instr_Type.U_TYPE:
                 print("utype")
