@@ -24,18 +24,20 @@ def tbs(x, y, z):
 
 # actual emulator
 def emulator(csr, regfile, input_file, mem):
-    # PC IS NOT IMPLEMENTED CURRENTLY ALL, JUMP AND LINK HAS NO FUNCTIONALITY YET
-    f = open(input_file)
-    
-    while(line := f.readline()):
-        line = line.strip()
+    with open(input_file, "r") as f:
+        instructions = f.readlines()
+
+    ### STARTING PC IS ASSUMED ZERO FOR NOW BUT UPDATE IT ACCORDING TO WHAT SOFTWARE GIVES US
+    pc = 0
+    halt = False
+
+    while not halt and pc < len(instructions):
+        line = instructions[pc].strip()
+
         #compiler is big endian:MSB at smallest addr
         instr_type = Bits(bin=line[28:32], length=4) # bits 31:28
         funct = Bits(bin=line[25:28], length=3) # bits 27:25
-        # print(f'instr_type={instr_type}')
-        # print(f'funct={funct.bin}')
-        #(rs1, rs2, rd, imm) = parser.py
-        # print({Instr_Type.R_TYPE.value})
+
         match Instr_Type(instr_type):
             case Instr_Type.R_TYPE_0:
                 op = R_Op_0(funct)
