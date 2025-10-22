@@ -29,29 +29,32 @@ def emulator(csr, regfile, input_file, mem):
     
     while(line := f.readline()):
         line = line.strip()
-        #compiler is big endian:MSB at smallest addr
-        instr_type = Bits(bin=line[28:32], length=4) # bits 31:28
-        funct = Bits(bin=line[25:28], length=3) # bits 27:25
+        #compiler is big endian:MSB at smallest addr. That, or you can consider
+        #no, compiler just put opcode, LSB, at the left for the teal card. So it is small endian...
+        #python parses with highest index at the left 
+        opcode = Bits(bin=line[25:29], length=4) # bits 31:27
+        funct3 = Bits(bin=line[29:32], length=3) # bits 26:24
+        # print({line})
         # print(f'instr_type={instr_type}')
         # print(f'funct={funct.bin}')
         #(rs1, rs2, rd, imm) = parser.py
         # print({Instr_Type.R_TYPE.value})
-        match Instr_Type(instr_type):
+        rs2 = Bits(bin=line[8:13], length=6) #24:19
+        rs1 = Bits(bin=line[13:19], length=6) #18:13
+        rd = Bits(bin=line[19:25], length=6) #12:7
+        # imm = Bits(bin=line[]) #
+        match Instr_Type(opcode):
             case Instr_Type.R_TYPE_0:
-                op = R_Op_0(funct)
-                rs2 = Bits(bin=line[8:13]) #12:8
-                rs1 = Bits(bin=line[13:19]) #18:13
-                rd = Bits(bin=line[19:25]) #24:19
+                op = R_Op_0(funct3)
                 instr = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                print("rtype_0")  
+                print(f"rtype_0, funct={op}={funct3}")  
             case Instr_Type.R_TYPE_1:
-                op = R_Op_1(funct)
-                rs2 = Bits(bin=line[8:13]) #12:8
-                rs1 = Bits(bin=line[13:19]) #18:13
-                rd = Bits(bin=line[19:25]) #24:19
+                op = R_Op_1(funct3)
                 instr = R_Instr_1(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                print("rtype_1")  
+                print(f"rtype_1, {op}")  
             case Instr_Type.I_TYPE_0:
+                op = I_Op_0(funct3)
+                # instr = I_Type_0(op=op, rs1, imm=imm, rd=rd)
                 print("itype_0")
             case Instr_Type.I_TYPE_1:
                 print("itype_1")
