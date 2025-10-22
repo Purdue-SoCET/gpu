@@ -19,7 +19,7 @@ class Instr(ABC):
         pass
 
     @abstractmethod
-    def eval(self, t_id: int, t_reg: Reg_File, mem=None) -> None:
+    def eval(self, t_id: int, t_reg: Reg_File) -> None:
         pass
 
     def check_overflow(self, result: Union[int, float], t_id: int) -> None:
@@ -56,7 +56,7 @@ class R_Instr_0(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, t_id: int, t_reg: Reg_File, mem=None) -> None:
+    def eval(self, t_id: int, t_reg: Reg_File) -> None:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
 
@@ -107,7 +107,7 @@ class R_Instr_1(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, t_id: int, t_reg: Reg_File, mem=None) -> None:
+    def eval(self, t_id: int, t_reg: Reg_File) -> None:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
 
@@ -161,7 +161,7 @@ class I_Instr_0(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, t_id: int, t_reg: Reg_File, mem=None) -> None:
+    def eval(self, t_id: int, t_reg: Reg_File) -> None:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.int  # Sign-extended immediate
 
@@ -194,7 +194,7 @@ class I_Instr_1(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, t_id: int, t_reg: Reg_File, mem=None) -> None:
+    def eval(self, t_id: int, t_reg: Reg_File) -> None:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.uint  # Unsigned immediate for shifts and unsigned compare
 
@@ -269,9 +269,7 @@ class I_Instr_2(Instr):
                 # Save return address (PC + 4)
                 return_addr = self.pc + 4
                 t_reg.write(self.rd, Bits(int=return_addr, length=32))
-                # Jump to rs1 + imm (new PC will be set by caller)
                 target_addr = rdat1.int + imm_val
-                # Store target address for caller to update PC
                 self.target_pc = target_addr
                 return  # Skip the default write at the end
             
