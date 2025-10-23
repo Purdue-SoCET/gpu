@@ -23,18 +23,18 @@ def tbs(x, y, z):
     return csr
 
 # actual emulator
-def emulator(csr, regfile, input_file, mem):
-    # PC IS NOT IMPLEMENTED CURRENTLY ALL, JUMP AND LINK HAS NO FUNCTIONALITY YET
+def emulator(csr, regfile, input_file, pc, mem):
     with open(input_file, "r") as f:
         instructions = f.readlines()
 
     ### STARTING PC IS ASSUMED ZERO FOR NOW BUT UPDATE IT ACCORDING TO WHAT SOFTWARE GIVES US
-    pc = 0
+    pc = pc.int
     halt = False
 
     while not halt and pc < len(instructions):
         line = instructions[pc].strip()
 
+        print(line)
         #compiler is big endian:MSB at smallest addr. That, or you can consider
         #no, compiler just put opcode, LSB, at the left for the teal card. So it is small endian...
         #python parses with highest index at the left 
@@ -84,12 +84,13 @@ def emulator(csr, regfile, input_file, mem):
                 print("ctype")
             case _:
                 print("Undefined opcode")
-                
+
+        return
     return
 
 # main function
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
+    if len(sys.argv) < 6:
         print("fuck u lol")
         sys.exit(1)
 
@@ -100,8 +101,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     csr = tbs(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
-    warp = Warp(0)
-    emulator(csr, warp.reg_files, sys.argv[1], "e")
+    warp = Warp(0, Bits(int=int(sys.argv[5]), length=32))
+    mem = Mem()
+    emulator(csr, warp.reg_files, sys.argv[1], warp.pc, mem)
     # regfile = [[0 for i in range(32)] for j in range(32)]
 
     # print_csr(csr) # uncomment to print out csr

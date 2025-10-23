@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from bitstring import Bits
 from typing import Union, Optional
+from mem import *
 import logging
 import sys
 import math
@@ -287,9 +288,9 @@ class I_Instr_2(Instr):
             
             case _:
                 raise NotImplementedError(f"I-Type operation {self.op} not implemented yet or doesn't exist.")
-        
+            
         t_reg.write(self.rd, Bits(int=result, length=32))
-        return self.pc  # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
+        return self.pc # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
 
 class F_Instr(Instr):
     def __init__(self, op: F_Op, rs1: Bits, rd: Bits) -> None:
