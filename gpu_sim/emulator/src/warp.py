@@ -3,22 +3,17 @@ from instr import *
 
 class Warp:
     def __init__(self, warp_id: int, pc: Bits) -> None:
-        self.reg_files = [Reg_File(64) for i in range(32)]
-        self.pred_reg_file = Predicate_Reg_File()
+        self.reg_files = [Reg_File(num_regs=64, num_bits_per_reg=32) for i in range(32)]
         self.pc = pc
         self.csr_file = CSR_File(warp_id) # contains thread IDs and block IDs
 
-    def eval(self, instr: Instr, mem=None) -> Bits:
-        for t_id in self.csr_file.thread_ids:
-            if self.masks[instr.mask_id][t_id]:
-                instr.eval(t_id, self.reg_files[t_id], mem)
-        
-        ### IN PROGRESS - PC Computation ###
-        """ 
-        next_pc = Bits(int=self.pc.int + 4, length=32)
-        match instr.opcode:
-            case I_Op_2.JALR:
-                next_pc = Bits(int=self.pc.int + 4, length=32)
-        self.pc = next_PC
-        return next_PC
-        """ 
+    def eval(self, instr: Instr, pred_reg_file: Predicate_Reg_File) -> Bits:
+        for global_thread_id in self.csr_file.global_thread_ids:
+            if pred_reg_file.read(global_thread_id).int == 1:
+                next_pc = instr.eval(global_thread_id, self.reg_files[Reg_File._get_local_thread_id_from(global_thread_id)], mem)
+
+                match instr.op:
+                    case I_Op_2.JALR | P_Op.JPNZ | J_Op.JAL:
+                        self.pc = next_pc
+                    case _:
+                        self.pc = Bits(int=self.pc.int + 4, length=32)
