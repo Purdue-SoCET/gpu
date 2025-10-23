@@ -29,11 +29,11 @@ Please follow the following file structure:
 To use the SoCET GPU Emulator, first install and activate the Python virtual environment by running the following commands in a Linux terminal:
 
 ```
+cd ./gpu_sim/emulator
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-cd ./gpu_sim/emulator
 source venv/bin/activate
 ```
 
