@@ -1,3 +1,5 @@
+from bitstring import Bits
+
 class CSR_File:
     def __init__(self, warp_id: int, block_id: int) -> None:
         self.warp_id = warp_id

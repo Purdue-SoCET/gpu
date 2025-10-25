@@ -4,10 +4,10 @@ from reg_file import *
 from instr import *
 from warp import *
 from mem import *
+from csr_file import *
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-
-from custom_enums import *
+from common import custom_enums
 # print csr helper
 def print_csr(csr):
     for i in range(len(csr["x"])):
@@ -83,7 +83,7 @@ def emulator(input_file, warp, mem):
         rs1 = Bits(bin=line[13:19], length=6) #18:13
         rd = Bits(bin=line[19:25], length=6) #12:7
         # imm = Bits(bin=line[]) #
-        match Instr_Type(instr_type):
+        match Instr_Type(opcode):
             case Instr_Type.R_TYPE_0:
                 op = R_Op_0(funct3)
                 instr = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
