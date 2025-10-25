@@ -9,12 +9,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from common import custom_enums
 
-# print csr helper
-def print_csr(csr):
-    for i in range(len(csr["x"])):
-        print(f"lane {i:2d}: (z={csr['z'][i]}, y={csr['y'][i]}, x={csr['x'][i]})")
-
-
 # thread block scheduler
 def tbs(x, y, z):
     blocksize = x*y*z
@@ -69,8 +63,20 @@ def emulator(input_file, warp, mem):
     while not halt and pc < len(instructions) * 4:
         for thread_id in range(64): 
             pc = warp.pc.int
-            line = instructions[int(pc/4)].strip()
+            line = instructions[int(pc / 4)].strip()
 
+            # remove inline comments before parsing
+            for marker in ("//", "#"):
+                idx = line.find(marker)
+                if idx != -1:
+                    line = line[:idx]
+            line = line.strip()
+
+            # skip empty/comment-only lines
+            if not line:
+                continue
+
+            # decode
             opcode = Bits(bin=line[25:29], length=4) # bits 31:27
             funct3 = Bits(bin=line[29:32], length=3) # bits 26:24
             # print({line})

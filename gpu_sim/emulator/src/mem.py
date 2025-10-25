@@ -8,6 +8,7 @@ class Mem:
         self.memory: dict[int, int] = {}
 
         endianness = "little"
+        addr = start_pc
 
         p = Path(input_file)
         if not p.exists():
