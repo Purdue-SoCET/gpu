@@ -61,7 +61,7 @@ def emulator(input_file, warp, mem):
     halt = False
     pred_reg_file = Predicate_Reg_File()
     while not halt and pc < len(instructions) * 4:
-        for thread_id in range(64): 
+        # for thread_id in range(32): 
             pc = warp.pc.int
             line = instructions[int(pc / 4)].strip()
             # remove inline comments before parsing
@@ -144,7 +144,7 @@ def emulator(input_file, warp, mem):
                 case _:
                     print("Undefined opcode")
             # pc += 4 # NOTE: temporary until PC incrementing is figured out. How will this change with scheduling?
-            warp.eval(instr=instr, pred_reg_file=pred_reg_file, thread_id=thread_id) #how to pass in mem, when different eval want/don't want it?
+            halt = warp.eval(instr=instr, pred_reg_file=pred_reg_file, mem=mem) #how to pass in mem, when different eval want/don't want it?
             # print(f"pc={warp.pc.int}")
         # return
     return
@@ -163,5 +163,5 @@ if __name__ == "__main__":
 
     csrs = tbs(int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
     warp = Warp(0, Bits(int=int(sys.argv[5]), length=32), csrs[0])
-    mem = Mem(0, sys.argv[1])
+    mem = Mem(int(sys.argv[5]), sys.argv[1])
     emulator(sys.argv[1], warp, mem)
