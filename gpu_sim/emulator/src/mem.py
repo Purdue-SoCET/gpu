@@ -58,7 +58,7 @@ class Mem:
             val |= b << (8 * i)
         return val
 
-    def write(self, addr: int, data: int, bytes: int) -> None:
+    def write(self, addr: Bits, data: Bits, bytes: int) -> None:
         for i in range(bytes):
             self.memory[addr + i] = (data >> (8 * i)) & 0xFF
     def dump_on_exit(self) -> None:

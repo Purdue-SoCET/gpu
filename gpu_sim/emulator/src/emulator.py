@@ -67,7 +67,7 @@ def emulator(input_file, warp, mem):
     pc = warp.pc.int
     halt = False
     pred_reg_file = Predicate_Reg_File()
-    while not halt and pc < len(instructions) * 4:
+    while not halt and warp.pc.int < len(instructions) * 4:
         # for thread_id in range(32): 
             pc = warp.pc.int
             line = instructions[int(pc / 4)].strip()
@@ -99,7 +99,7 @@ def emulator(input_file, warp, mem):
                 case Instr_Type.R_TYPE_0:
                     op = R_Op_0(funct3)
                     instr = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                    print(f"rtype_0, funct={op}")  
+                    print(f"rtype_0, funct={op}, rs1={rs1.int}, rs2={rs2.int}")  
                 case Instr_Type.R_TYPE_1:
                     op = R_Op_1(funct3)
                     instr = R_Instr_1(op=op, rs1=rs1, rs2=rs2, rd=rd)
@@ -107,34 +107,33 @@ def emulator(input_file, warp, mem):
                 case Instr_Type.I_TYPE_0:
                     op = I_Op_0(funct3)
                     instr = I_Instr_0(op=op, rs1=rs1, imm=imm, rd=rd)
-                    print(f"itype_0, funct={op},imm={imm.int}")
+                    print(f"itype_0, funct={op},rd={rd.int},rs1={rs1.int},imm={imm.int}")
                 case Instr_Type.I_TYPE_1:
                     op = I_Op_1(funct3)
                     instr = I_Instr_1(op=op, rs1=rs1, imm=imm, rd=rd)
                     print(f"itype_1, funct={op},imm={imm.int}")
                 case Instr_Type.I_TYPE_2:
                     op = I_Op_2(funct3)
-                    instr = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=Bits(int=pc, length=32))
+                    instr = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=warp.pc)
                     print(f"itype_2, funct={op}")
                 case Instr_Type.S_TYPE_0:
                     op = S_Op_0(funct3)
                     rs2 = imm #reads rs2 in imm spot
-                    mem = rd #reads imm in the normal rd spot
-                    instr = S_Instr_0(op=op, rs1=rs1, rs2=rs2, imm=mem)
+                    instr = S_Instr_0(op=op, rs1=rs1, rs2=rs2, imm=rd) #reads imm in the normal rd spot
                     print(f"stype_0, funct={op},imm={imm.int}")
                 case Instr_Type.B_TYPE_0:
                     op = B_Op_0(funct3)
-                    instr = B_Instr_0(op=op, rs1=rs1, rs2=rs2, pred_reg_file=pred_reg_file)
+                    instr = B_Instr_0(op=op, rs1=rs1, rs2=rs2)
                     print(f"btype, funct={op}")
                 case Instr_Type.U_TYPE:
                     op = U_Op(funct3)
                     imm = imm + rs1 #concatenate
-                    instr = U_Instr(op=op, imm=imm, rd=rd)
+                    instr = U_Instr(op=op, imm=imm, rd=rd, pc=warp.pc)
                     print(f"utype, funct={op},imm={imm.int}")
                 case Instr_Type.J_TYPE:
                     op = J_Op(funct3)
                     imm = rs1 + rs2 + pred #concatenate
-                    instr = J_Instr(op=op, rd=rd, imm=imm, pc=pc, pred_reg_file=pred_reg_file)
+                    instr = J_Instr(op=op, rd=rd, imm=imm, pc=warp.pc)
                     print("jtype")
                 case Instr_Type.P_TYPE:
                     op = P_Op(funct3)
@@ -149,7 +148,7 @@ def emulator(input_file, warp, mem):
                 case Instr_Type.H_TYPE:
                     op=H_Op(funct3)
                     instr = H_Instr(op=op)
-                    print(f"halt")
+                    print(f"halt, funct={op}")
                 case _:
                     print("Undefined opcode")
             # pc += 4 # NOTE: temporary until PC incrementing is figured out. How will this change with scheduling?

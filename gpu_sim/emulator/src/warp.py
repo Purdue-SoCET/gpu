@@ -10,22 +10,17 @@ class Warp:
         self.pc = pc
         self.csr_file = csr # contains thread IDs and block IDs
 
-    # def eval(self, instr: Instr, pred_reg_file: Predicate_Reg_File, mem: Mem) -> Bits:
-    #     for global_thread_id in self.csr_file["tid"]:
-    #         self.CSR_File = CSR_File(warp_id=warp_id, block_id=warp_id) # NOTE: CHANGE!!!
-
     def eval(self, instr: Instr, pred_reg_file: Predicate_Reg_File, mem: Mem) -> Bits: #eventually change thread_id to Bits/csr_file
         # iterating through every thread is unncessesary, since threads will always share the same PC within a warp.
         halt = False
         for global_thread_id in self.csr_file["tid"]: 
-            if pred_reg_file.read(global_thread_id).int == 1:
-                halt = instr.eval(global_thread_id, self.reg_files[global_thread_id], mem)
-
-        # halt = instr.eval(1, self.reg_files[thread_id], mem)
+            # if pred_reg_file.read(global_thread_id).int == 1:
+                halt = instr.eval(global_thread_id=global_thread_id, t_reg=self.reg_files[global_thread_id], mem=mem, pred_reg_file=pred_reg_file)
+        # halt = instr.eval(1, self.reg_files[0], mem)
         match instr.op:
             case I_Op_2.JALR | P_Op.JPNZ | J_Op.JAL:
-                instr.eval(global_thread_id = 0, t_reg=self.reg_files[0], mem=None)
-                self.pc = instr.pc
+                # instr.eval(1, self.reg_files)
+                self.pc = Bits(int=instr.pc.int, length=32)
             case _:
                 self.pc = Bits(int=self.pc.int + 4, length=32)
         return halt

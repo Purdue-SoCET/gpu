@@ -26,7 +26,7 @@ class Instr(ABC):
         self.op = op
 
     @abstractmethod
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         pass
 
     def check_overflow(self, result: Union[int, float], global_thread_id: int) -> None:
@@ -58,8 +58,8 @@ class Instr(ABC):
             case U_Op.AUIPC:
                 if result > 2147483647 or result < -2147483648:
                     logger.warning(f"Arithmetic overflow in AUIPC from thread ID {global_thread_id}: R{self.rd.int} = PC + {self.imm.int} << 12")
-            case _:
-                logger.warning(f"Unknown overflow in operation {self.op} from thread ID {global_thread_id}")
+            # case _:
+            #     logger.warning(f"Unknown overflow in operation {self.op} from thread ID {global_thread_id}")
 
 
 
@@ -70,7 +70,7 @@ class R_Instr_0(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem=None, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
 
@@ -122,7 +122,7 @@ class R_Instr_1(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem=None, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
 
@@ -178,7 +178,7 @@ class I_Instr_0(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem=None, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.int  # Sign-extended immediate
 
@@ -212,7 +212,7 @@ class I_Instr_1(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem=None, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.uint  # Unsigned immediate for shifts and unsigned compare
 
@@ -249,7 +249,7 @@ class I_Instr_2(Instr):
             self.pc = None # Program counter not used for LW/LH/LB
             # self.mem = mem # Memory object for LW/LH/LB
   
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
         # if(self.op != I_Op_2.JALR):
         rdat1 = t_reg.read(self.rs1) #jalr doesn't read from reg file?
         imm_val = self.imm.int  # Sign-extended immediate
@@ -307,7 +307,7 @@ class F_Instr(Instr):
         self.rs1 = rs1
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem=None, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
 
         match self.op:
@@ -362,7 +362,7 @@ class S_Instr_0(Instr):
         self.imm = imm
         # self.mem = mem #does store need to extract memory?
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
         imm_val = self.imm.int  # Sign-extended immediate
@@ -391,13 +391,13 @@ class S_Instr_0(Instr):
         return False
 
 class B_Instr_0(Instr):
-    def __init__(self, op: B_Op_0, rs1: Bits, rs2: Bits, pred_reg_file: Predicate_Reg_File) -> None:
+    def __init__(self, op: B_Op_0, rs1: Bits, rs2: Bits) -> None:
         super().__init__(op)
         self.rs1 = rs1
         self.rs2 = rs2
-        self.pred_reg_file = pred_reg_file
+        # self.pred_reg_file = pred_reg_file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, pred_reg_file: Predicate_Reg_File, mem=None ) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
         
@@ -432,7 +432,7 @@ class B_Instr_0(Instr):
                 raise NotImplementedError(f"B-Type operation {self.op} not implemented yet or doesn't exist.")
 
         # Write to predicate register: PR[local_thread_id] = result
-        self.pred_reg_file.write(global_thread_id, Bits(int=result, length=1))
+        pred_reg_file.write(global_thread_id, Bits(uint=result, length=1))
         return False
 
 class U_Instr(Instr):
@@ -442,7 +442,7 @@ class U_Instr(Instr):
         self.imm = imm
         self.pc = pc  # Program counter for AUIPC
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
         match self.op:
             # Build PC
             case U_Op.AUIPC:
@@ -492,7 +492,7 @@ class C_Instr(Instr):
         self.csr = csr
         self.csr_file = csr_file  # Control Status Register file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_File=None) -> bool:
         if self.csr_file is None:
             raise RuntimeError(f"CSR file required for {self.op.name} operation")
         
@@ -515,14 +515,14 @@ class C_Instr(Instr):
         return False
 
 class J_Instr(Instr):
-    def __init__(self, op: J_Op, rd: Bits, imm: Bits, pc: Bits, pred_reg_file: Predicate_Reg_File) -> None:
-        super().__init__(op, pred_reg_file)
+    def __init__(self, op: J_Op, rd: Bits, imm: Bits, pc: Bits) -> None:
+        super().__init__(op)
         self.rd = rd
         self.imm = imm
         self.pc = pc  # Program counter
-        self.pred_reg_file = pred_reg_file  # Predicate register file
+        # self.pred_reg_file = pred_reg_file  # Predicate register file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, pred_reg_file: Predicate_Reg_File=None, mem=None) -> bool:
         match self.op:
             # Jump and Link
             case J_Op.JAL:
@@ -530,7 +530,7 @@ class J_Instr(Instr):
                 self.pc = Bits(int=self.pc.int + 4, length=32)
 
                 # Set all predicate registers to 1
-                self.pred_reg_file.write_all(data=Bits(int=1))  # writes to all 32 registers
+                pred_reg_file.write_all(data=Bits(uint=1,length=1))  # writes to all 32 registers
                 
                 # Calculate new PC (PC = PC + imm)
                 self.pc = Bits(int=self.pc.int + self.imm.int, length=32)
@@ -538,7 +538,7 @@ class J_Instr(Instr):
             case _:
                 raise NotImplementedError(f"J-Type operation {self.op} not implemented yet or doesn't exist.")
         
-        t_reg.write(self.rd, Bits(int=result, length=32))
+        t_reg.write(self.rd, Bits(int=self.pc.int, length=32))
         return False
         # return self.pc
 
