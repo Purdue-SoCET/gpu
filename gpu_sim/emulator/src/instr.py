@@ -569,7 +569,7 @@ class P_Instr(Instr):
 
 class H_Instr(Instr):
     def __init__(self, op: H_Op, r_pred: Bits = Bits(bin='11111', length=5)) -> None:
-        super().__init__(op, r_pred)
+        super().__init__(op)
 
     def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem) -> bool:
         match self.op:

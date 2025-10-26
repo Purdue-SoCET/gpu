@@ -140,6 +140,8 @@ def emulator(input_file, warp, mem):
                     instr = F_Instr(op=op, rs1=rs1, rd=rd)
                     print(f"ftype, funct={op},imm={imm.int}")
                 case Instr_Type.H_TYPE:
+                    op=H_Op(funct3)
+                    instr = H_Instr(op=op)
                     print(f"halt")
                 case _:
                     print("Undefined opcode")
