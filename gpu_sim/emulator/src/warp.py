@@ -16,14 +16,16 @@ class Warp:
 
     def eval(self, instr: Instr, pred_reg_file: Predicate_Reg_File, mem: Mem) -> Bits: #eventually change thread_id to Bits/csr_file
         # iterating through every thread is unncessesary, since threads will always share the same PC within a warp.
+        halt = False
         for global_thread_id in self.csr_file["tid"]: 
-            # if pred_reg_file.read(global_thread_id).int == 1:
+            # for the JALR instruction, infinite loop occurs here because predicate mask is all 0's for that instruction, will investigate later
+            if pred_reg_file.read(global_thread_id).int == 1:
                 halt = instr.eval(global_thread_id, self.reg_files[global_thread_id], mem)
         # halt = instr.eval(1, self.reg_files[thread_id], mem)
         match instr.op:
             case I_Op_2.JALR | P_Op.JPNZ | J_Op.JAL:
                 # instr.eval(1, self.reg_files)
-                self.pc = Bits(int=instr.pc, length=32)
+                self.pc = instr.pc
             case _:
                 self.pc = Bits(int=self.pc.int + 4, length=32)
         return halt

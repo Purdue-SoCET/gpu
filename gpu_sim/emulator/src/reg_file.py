@@ -5,12 +5,12 @@ class Reg_File:
         self.arr: list[Bits] = [Bits(int=0, length=num_bits_per_reg) for i in range(num_regs)]
     
     def read(self, rd: Bits) -> Bits:
-        return self.arr[rd.int]
+        return self.arr[rd.uint]
 
     def write(self, rd: Bits, val: Bits) -> None:
         if(rd.int == 0):
             return
-        self.arr[rd.int] = val
+        self.arr[rd.uint] = val
 
     @staticmethod
     def _get_local_thread_id_from(global_thread_id: int) -> int:

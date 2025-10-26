@@ -282,15 +282,17 @@ class I_Instr_2(Instr):
             
             # Jump and Link Register
             case I_Op_2.JALR:
+                print(self.pc)
                 if self.pc is None:
                     raise RuntimeError("Program counter required for JALR operation")
                 # Save return address (PC + 4)
-                return_addr = self.pc + 4
+                return_addr = self.pc.int + 4
                 result = return_addr
 
                 # Calculate target address
                 target_addr = rdat1.int + imm_val
-                self.pc = target_addr
+                self.pc = Bits(int=target_addr, length=32)
+                print(type(self.pc))
             
             case _:
                 raise NotImplementedError(f"I-Type operation {self.op} not implemented yet or doesn't exist.")

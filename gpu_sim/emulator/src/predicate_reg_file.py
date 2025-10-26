@@ -29,7 +29,7 @@ class Predicate_Reg_File(Reg_File):
         else:
             local_thread_id = thread_id
 
-        addr = Bits(int=local_thread_id, length=5)
+        addr = Bits(uint=local_thread_id, length=5)
         return super().read(addr)
 
     @singledispatchmethod
@@ -54,7 +54,7 @@ class Predicate_Reg_File(Reg_File):
         else:
             local_thread_id = thread_id
 
-        addr = Bits(int=local_thread_id, length=5)
+        addr = Bits(uint=local_thread_id, length=5)
         super().write(addr, data)
 
     def write_all(self, data) -> None:

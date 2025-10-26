@@ -1,6 +1,13 @@
 import sys
 from pathlib import Path
-from reg_file import * 
+
+# Add project root to path for imports
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from common.custom_enums import *
+from reg_file import *
 from instr import *
 from warp import *
 from mem import *
@@ -107,7 +114,7 @@ def emulator(input_file, warp, mem):
                     print(f"itype_1, funct={op},imm={imm.int}")
                 case Instr_Type.I_TYPE_2:
                     op = I_Op_2(funct3)
-                    instr = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=pc)
+                    instr = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=Bits(int=pc, length=32))
                     print(f"itype_2, funct={op}")
                 case Instr_Type.S_TYPE_0:
                     op = S_Op_0(funct3)
@@ -117,7 +124,7 @@ def emulator(input_file, warp, mem):
                     print(f"stype_0, funct={op},imm={imm.int}")
                 case Instr_Type.B_TYPE_0:
                     op = B_Op_0(funct3)
-                    instr = B_Instr_0(op=op, rs1=rs1, rs2=rs2, pred_reg_file=rd)
+                    instr = B_Instr_0(op=op, rs1=rs1, rs2=rs2, pred_reg_file=pred_reg_file)
                     print(f"btype, funct={op}")
                 case Instr_Type.U_TYPE:
                     op = U_Op(funct3)
