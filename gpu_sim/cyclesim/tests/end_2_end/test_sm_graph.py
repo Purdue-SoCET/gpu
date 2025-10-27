@@ -5,7 +5,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from gpu.gpu_sim.cyclesim.src.base_class import StageInterface, PipelineStage, SM, LoggerBase, PerfCounterBase
+from gpu.gpu_sim.cyclesim.src.base_class import StageInterface, PipelineStage, SM, LoggerBase, PerfCounterBase, FunctionalUnitBase
 
 from collections import deque
 from dataclasses import dataclass, field
@@ -394,6 +394,10 @@ class EndStage(PipelineStage):
         if self.inputs:
             self.inputs[0].ready = False
 
+        alu_to_fpu = StageInterface("if_ALU_FPU", latency=1)
+        fpu_to_alu = StageInterface("if_FPU_ALU", latency=1)
+                
+
     def load_instructions(self, instructions):
         self.inst_queue.extend(instructions)
 
@@ -405,10 +409,11 @@ class EndStage(PipelineStage):
         
         if inst:
             print(f"PASSTHROUGH: Executing instruction: {inst}\n")
+
             return inst
         return None
     
-    
+ 
 
 # =========================================================
 #  SM Wrapper
