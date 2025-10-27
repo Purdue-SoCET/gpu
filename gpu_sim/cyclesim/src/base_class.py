@@ -25,6 +25,87 @@ class tb_data_params:
 	blockY_dim: int
 	blockZ_dim: int
 
+from dataclasses import dataclass, field
+from typing import Optional, Any, List, Dict
+
+@dataclass
+class FunctionalUnitBase:
+    """
+    Base class for all functional units (FUs) that can exchange data
+    via StageInterface objects and operate in parallel.
+    """
+    name: str
+    latency: int = 1
+    busy: bool = False
+    current_op: Optional[dict] = None
+    remaining_latency: int = 0
+    output: Optional[Any] = None
+
+    # IO connections
+    inputs: List[Any] = field(default_factory=list)
+    outputs: List[Any] = field(default_factory=list)
+    feedback_links: Dict[str, Any] = field(default_factory=dict)
+    parent_stage: Optional[Any] = field(default=None, repr=False)
+
+    def add_input(self, iface):
+        self.inputs.append(iface)
+
+    def add_output(self, iface):
+        self.outputs.append(iface)
+
+    def add_feedback(self, name: str, iface):
+        self.feedback_links[name] = iface
+
+    # =====================================================
+    # Core Lifecycle
+    # =====================================================
+
+    def accept(self, op: dict) -> bool:
+        """Accept a new operation if not busy."""
+        if self.busy:
+            return False
+        self.current_op = op
+        self.busy = True
+        self.remaining_latency = self.latency
+        print(f"[{self.name}] Accepted op: {op}")
+        return True
+
+    def tick(self):
+        """Advance by one cycle."""
+        # Receive new data from input interfaces
+        for inp in self.inputs:
+            data = inp.receive()
+            if data and not self.busy:
+                self.accept(data)
+
+        if self.busy:
+            if self.remaining_latency > 0:
+                self.remaining_latency -= 1
+                print(f"[{self.name}] ticking... ({self.remaining_latency} cycles left)")
+
+            if self.remaining_latency == 0:
+                result = self.process(self.current_op)
+                self.output = result
+                self.busy = False
+                self.current_op = None
+
+                # Send output downstream
+                for out in self.outputs:
+                    if out.can_accept():
+                        out.send(result)
+                        print(f"[{self.name}] → sent result {result}")
+                    else:
+                        print(f"[{self.name}] Output stalled.")
+
+    def process(self, op: dict) -> Any:
+        """Override this method in subclasses."""
+        raise NotImplementedError(f"{self.__class__.__name__}.process() not implemented.")
+
+    def get_output(self):
+        out = self.output
+        self.output = None
+        return out
+
 @dataclass
 class StageInterface:
     """Handshake data path between two pipeline stages."""
