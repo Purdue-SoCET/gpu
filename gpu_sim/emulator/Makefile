@@ -8,5 +8,8 @@ TYPE := "hex"
 run:
 	$(PYTHON) $(EMULATOR) $(INPUT_FILE) $(BLOCK_DIM) $(START_PC) $(TYPE)
 
+run-bin:
+	$(MAKE) run TYPE="bin"
+
 clean:
 	rm -f *.out *.log

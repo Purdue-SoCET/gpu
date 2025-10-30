@@ -76,7 +76,7 @@ def emulator(input_file, warp, mem):
             if idx != -1:
                 line = line[:idx]
         line = line.strip()
-        if(sys.argv[6] != 0):
+        if(sys.argv[6] == "hex"):
             line = Bits(hex=line, length=32)
         else:
             line = Bits(bin=line, length=32)
