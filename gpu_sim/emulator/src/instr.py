@@ -21,7 +21,7 @@ from predicate_reg_file import *
 logger = logging.getLogger(__name__)
 
 class Instr(ABC):
-    @abstractmethod
+    # @abstractmethod
     def __init__(self, op: Op) -> None:
         self.op = op
 
@@ -60,7 +60,71 @@ class Instr(ABC):
                     logger.warning(f"Arithmetic overflow in AUIPC from thread ID {global_thread_id}: R{self.rd.int} = PC + {self.imm.int} << 12")
             # case _:
             #     logger.warning(f"Unknown overflow in operation {self.op} from thread ID {global_thread_id}")
-
+    
+    def decode(self, instruction: Bits, pc: Bits) -> None:
+        opcode = Bits(bin=instruction.bin[25:29], length=4) # bits 31:27
+        funct3 = Bits(bin=instruction.bin[29:32], length=3) # bits 26:24
+        rs2  = Bits(bin=instruction.bin[7:13], length=6) #24:19
+        rs1  = Bits(bin=instruction.bin[13:19], length=6) #18:13
+        rd   = Bits(bin=instruction.bin[19:25], length=6) #12:7
+        imm  = Bits(bin=instruction.bin[7:13], length=6)    #default (I-Type). Make sure to shift for B-type
+        pred = Bits(bin=instruction.bin[2:8], length=5)
+        match Instr_Type(opcode): #things passed into here: instruction (line) itself and PC
+            case Instr_Type.R_TYPE_0:
+                op = R_Op_0(funct3)
+                self = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print(f"rtype_0, funct={op}, rs1={rs1.int}, rs2={rs2.int}")  
+            case Instr_Type.R_TYPE_1:
+                op = R_Op_1(funct3)
+                self = R_Instr_1(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print(f"rtype_1, funct={op}")  
+            case Instr_Type.I_TYPE_0:
+                op = I_Op_0(funct3)
+                self = I_Instr_0(op=op, rs1=rs1, imm=imm, rd=rd)
+                print(f"itype_0, funct={op},rd={rd.int},rs1={rs1.int},imm={imm.int}")
+            case Instr_Type.I_TYPE_1:
+                op = I_Op_1(funct3)
+                self = I_Instr_1(op=op, rs1=rs1, imm=imm, rd=rd)
+                print(f"itype_1, funct={op},imm={imm.int}")
+            case Instr_Type.I_TYPE_2:
+                op = I_Op_2(funct3)
+                self = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=pc)
+                print(f"itype_2, funct={op}")
+            case Instr_Type.S_TYPE_0:
+                op = S_Op_0(funct3)
+                # rs2 = imm #reads rs2 in imm spot
+                self = S_Instr_0(op=op, rs1=rs1, rs2=rs2, imm=rd) #reads imm in the normal rd spot
+                print(f"stype_0, funct={op},imm={rd.int}, rs1={rs1.int}, rs2={rs2.int}")
+            case Instr_Type.B_TYPE_0:
+                op = B_Op_0(funct3)
+                self = B_Instr_0(op=op, rs1=rs1, rs2=rs2)
+                print(f"btype, funct={op}")
+            case Instr_Type.U_TYPE:
+                op = U_Op(funct3)
+                imm = imm + rs1 #concatenate
+                self = U_Instr(op=op, imm=imm, rd=rd, pc=pc)
+                print(f"utype, funct={op},imm={imm.int}")
+            case Instr_Type.J_TYPE:
+                op = J_Op(funct3)
+                imm = rs1 + rs2 + pred #concatenate
+                self = J_Instr(op=op, rd=rd, imm=imm, pc=pc)
+                print("jtype")
+            case Instr_Type.P_TYPE:
+                op = P_Op(funct3)
+                print("ptype")
+            case Instr_Type.C_TYPE:
+                op = C_Op(funct3)
+                print("ctype")
+            case Instr_Type.F_TYPE:
+                op = F_Op(funct3)
+                self = F_Instr(op=op, rs1=rs1, rd=rd)
+                print(f"ftype, funct={op},imm={imm.int}")
+            case Instr_Type.H_TYPE:
+                op=H_Op(funct3)
+                self = H_Instr(op=op, funct3=funct3)
+                print(f"halt, funct={op}, {funct3}")
+            case _:
+                print("Undefined opcode")
 
 
 class R_Instr_0(Instr):
@@ -371,7 +435,7 @@ class S_Instr_0(Instr):
         
         # Calculate address
         addr = rdat1.int + imm_val
-        print(f"{addr}, rdat1={rdat1}, rdat2={rdat2}")
+        # print(f"{addr}, rdat1={rdat1}, rdat2={rdat2}")
         match self.op:
             # Memory Write Operations
             case S_Op_0.SW:
@@ -577,7 +641,7 @@ class H_Instr(Instr):
         self.funct3 = funct3
 
     def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
-        print(f"{self.funct3}, {self.op}")
+        # print(f"{self.funct3}, {self.op}")
         match self.op:
             # Halt Operation
             case H_Op.HALT:
