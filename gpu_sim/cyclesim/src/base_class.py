@@ -16,6 +16,64 @@ from unicodedata import name
 from dataclasses import dataclass, field
 from typing import Optional
 
+import csv
+from collections import defaultdict
+
+class PerfDomain:
+    """
+    Hierarchical performance counter.
+    Each stage or functional unit can own one and propagate updates upward.
+    """
+    def __init__(self, name, parent=None, dump_interval=100, csv_path=None):
+        self.name = name
+        self.parent = parent
+        self.dump_interval = dump_interval
+        self.counters = defaultdict(int)
+        self.derived = {}
+        self.cycle = 0
+        self.csv_path = csv_path or f"{name}_perf.csv"
+        self._csv_initialized = False
+
+    # ------------------ Core API ------------------
+    def tick(self, n=1):
+        self.cycle += n
+        self.incr("cycles", n)
+        if self.cycle % self.dump_interval == 0:
+            self.dump_to_csv()
+
+    def incr(self, name, amount=1):
+        self.counters[name] += amount
+        if self.parent:
+            self.parent.incr(f"{self.name}.{name}", amount)
+
+    def set(self, name, value):
+        self.counters[name] = value
+
+    def derive(self, name, func):
+        """Register a derived metric: func(counters)->float."""
+        self.derived[name] = func
+
+    def compute_derived(self):
+        return {n: f(self.counters) for n, f in self.derived.items()}
+
+    def snapshot(self):
+        return dict(self.counters)
+
+    # ------------------ CSV Dump ------------------
+    def _init_csv(self):
+        with open(self.csv_path, "w", newline="") as f:
+            csv.writer(f).writerow(["cycle", "metric", "value"])
+        self._csv_initialized = True
+
+    def dump_to_csv(self):
+        if not self._csv_initialized:
+            self._init_csv()
+        with open(self.csv_path, "a", newline="") as f:
+            w = csv.writer(f)
+            for k, v in self.counters.items():
+                w.writerow([self.cycle, k, v])
+
+
 @dataclass
 class tb_data_params:
 	gridX_dim: int
@@ -29,154 +87,100 @@ from dataclasses import dataclass, field
 from typing import Optional, Any, List, Dict
 
 @dataclass
-class FunctionalUnitBase:
+class LatchInterface:
     """
-    Base class for all functional units (FUs) that can exchange data
-    via StageInterface objects and operate in parallel.
+    Generalized handshake latch with wait-based backpressure.
+    Handles valid/ready signaling and optional latency internally.
     """
     name: str
     latency: int = 1
-    busy: bool = False
-    current_op: Optional[dict] = None
-    remaining_latency: int = 0
-    output: Optional[Any] = None
+    is_feedback: bool = False
 
-    # IO connections
-    inputs: List[Any] = field(default_factory=list)
-    outputs: List[Any] = field(default_factory=list)
-    feedback_links: Dict[str, Any] = field(default_factory=dict)
-    parent_stage: Optional[Any] = field(default=None, repr=False)
+    def __post_init__(self):
+        self.data: Optional[Any] = None
+        self.next_data: Optional[Any] = None
+        self.valid: bool = False
+        self.next_valid: bool = False
 
-    def add_input(self, iface):
-        self.inputs.append(iface)
+        # Downstream backpressure
+        self.wait: int = 0
+        self.next_wait: int = 0
 
-    def add_output(self, iface):
-        self.outputs.append(iface)
+        # Pipeline timing
+        self.remaining_latency: int = 0
 
-    def add_feedback(self, name: str, iface):
-        self.feedback_links[name] = iface
-
-    # =====================================================
-    # Core Lifecycle
-    # =====================================================
-
-    def accept(self, op: dict) -> bool:
-        """Accept a new operation if not busy."""
-        if self.busy:
+    # -------------------------------
+    # Upstream interface
+    # -------------------------------
+    def send(self, data: Any) -> bool:
+        """
+        Upstream stage attempts to send data.
+        Returns True if accepted, False if stalled due to wait/backpressure.
+        """
+        if not self.can_accept():
             return False
-        self.current_op = op
-        self.busy = True
-        self.remaining_latency = self.latency
-        print(f"[{self.name}] Accepted op: {op}")
+
+        self.next_data = data
+        self.next_valid = True
+        self.remaining_latency = self.latency if not self.is_feedback else 0
         return True
 
+    def can_accept(self) -> bool:
+        """Returns True if latch can accept new data."""
+        if self.is_feedback:
+            return True
+        return (self.wait == 0) and (not self.valid) and (self.remaining_latency <= 0)
+
+    # -------------------------------
+    # Downstream interface
+    # -------------------------------
+    def receive(self) -> Optional[Any]:
+        """
+        Downstream tries to read data from latch.
+        Only succeeds if wait == 0 and data is valid.
+        """
+        if self.is_feedback:
+            return self.data if self.valid else None
+
+        if self.valid and self.wait == 0 and self.remaining_latency <= 0:
+            d = self.data
+            self.valid = False
+            self.data = None
+            return d
+        return None
+
+    def set_wait(self, cycles: int):
+        """Downstream sets wait cycles (backpressure)."""
+        self.next_wait = cycles
+
+    # -------------------------------
+    # Simulation control
+    # -------------------------------
     def tick(self):
-        """Advance by one cycle."""
-        # Receive new data from input interfaces
-        for inp in self.inputs:
-            data = inp.receive()
-            if data and not self.busy:
-                self.accept(data)
+        """Advance one simulation cycle (clock edge)."""
+        # Handle wait countdown
+        self.wait = max(0, self.next_wait - 1)
+        self.next_wait = self.wait  # keep steady if not reset
 
-        if self.busy:
-            if self.remaining_latency > 0:
-                self.remaining_latency -= 1
-                print(f"[{self.name}] ticking... ({self.remaining_latency} cycles left)")
+        if self.remaining_latency > 0:
+            self.remaining_latency -= 1
 
-            if self.remaining_latency == 0:
-                result = self.process(self.current_op)
-                self.output = result
-                self.busy = False
-                self.current_op = None
+        # Commit new data when latency resolves
+        if self.next_valid:
+            self.data = self.next_data
+            self.valid = True
+        self.next_data = None
+        self.next_valid = False
 
-                # Send output downstream
-                for out in self.outputs:
-                    if out.can_accept():
-                        out.send(result)
-                        print(f"[{self.name}] → sent result {result}")
-                    else:
-                        print(f"[{self.name}] Output stalled.")
-
-    def process(self, op: dict) -> Any:
-        """Override this method in subclasses."""
-        raise NotImplementedError(f"{self.__class__.__name__}.process() not implemented.")
-
-    def get_output(self):
-        out = self.output
-        self.output = None
-        return out
-
-@dataclass
-class StageInterface:
-    """Handshake data path between two pipeline stages."""
-    def __init__(self, name, latency=1, is_feedback=False):
-        self.name = name
-        self.latency = latency
-        self.is_feedback = is_feedback  # control feedback paths bypass tick
+    def flush(self):
+        """Clear latch state."""
         self.data = None
         self.next_data = None
         self.valid = False
         self.next_valid = False
-        self.ready = True
-        self.stall = False
+        self.wait = 0
+        self.next_wait = 0
         self.remaining_latency = 0
-
-    def send(self, data):
-        if not self.ready:
-            self.stall = True
-            return False
-        self.next_data = data
-        self.next_valid = True
-        if not self.is_feedback:
-            self.remaining_latency = self.latency
-        else:
-            # Feedback bypasses delay
-            self.data = data
-            self.valid = True
-        return True
-
-    def receive(self):
-        if self.is_feedback:
-            # Control paths behave as combinational connections
-            return self.data if self.valid else None
-
-        if self.valid and self.remaining_latency <= 0:
-            d = self.data
-            self.data = None
-            self.valid = False
-            self.ready = True
-            return d
-        return None
-
-    def flush(self):
-        self.data = None
-        self.next_data = None
-        self.valid = self.next_valid = False
-        self.remaining_latency = 0
-        self.ready = True
-        self.stall = False
-
-    def tick(self):
-        if self.is_feedback:
-            return  # bypass pipeline timing
-
-        if self.remaining_latency > 0:
-            self.remaining_latency -= 1
-        if self.next_valid:
-            self.data = self.next_data
-            self.valid = True
-            self.ready = False
-        elif not self.valid:
-            self.ready = True
-        self.next_data = None
-        self.next_valid = False
-        self.stall = False
-
-    def can_accept(self):
-        if self.is_feedback:
-            return True
-        return bool(self.ready and not self.next_valid and self.remaining_latency <= 0)
-
 
 class LoggerBase:
     """Minimal logger base class used by SM and stages.
@@ -226,47 +230,6 @@ class LoggerBase:
         with self._lock:
             return list(self._buffer)
 
-
-class PerfCounterBase:
-    """Simple performance counter base for cycle-level metrics.
-
-    API:
-    - tick(n=1): advance cycles and update cycle counter
-    - incr(name, amount=1): increment arbitrary counter
-    - set(name, value): set gauge
-    - snapshot(): return a shallow copy of counters
-    - reset(): clear counters
-    Thread-safe.
-    """
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        self.cycle = 0
-        self.counters = defaultdict(int)  # event counters
-        self.gauges = {}  # named gauges
-
-    def tick(self, n: int = 1):
-        with self._lock:
-            self.cycle += n
-            self.counters["cycles"] += n
-
-    def incr(self, name: str, amount: int = 1):
-        with self._lock:
-            self.counters[name] += amount
-
-    def set_gauge(self, name: str, value):
-        with self._lock:
-            self.gauges[name] = value
-
-    def snapshot(self) -> dict:
-        with self._lock:
-            return {"cycle": self.cycle, "counters": dict(self.counters), "gauges": dict(self.gauges)}
-
-    def reset(self):
-        with self._lock:
-            self.cycle = 0
-            self.counters.clear()
-            self.gauges.clear()
     
 @dataclass
 class SoCET_GPU():
@@ -282,92 +245,103 @@ class SoCET_GPU():
 		self.semester = "F25"
 		self.version = "0.1.0"
 
+from dataclasses import dataclass
+from typing import Optional
+from collections import OrderedDict
+
+# assume we already have:
+# - LatchInterface (the new version with wait/valid)
+# - PipelineStage or StageBase (stages that use .compute(), .execute(), etc.)
+# - LoggerBase, PerfDomain classes
+
+
 @dataclass
 class SM:
-    def __init__(self, stage_defs=None, connections=None, feedbacks=None, logger: Optional[LoggerBase]=None, perf: Optional[PerfCounterBase]=None):
-        # 1. Define stages (can be overridden)
+    """
+    Streaming Multiprocessor model with latch-based handshake interfaces
+    replacing legacy StageInterface connections.
+    """
+    def __init__(self,
+                 stage_defs=None,
+                 connections=None,
+                 feedbacks=None,
+                 logger: Optional["LoggerBase"] = None,
+                 perf: Optional["PerfDomain"] = None):
+
+        # === 1. Define stages ===
         if stage_defs is not None:
-            stages = dict(stage_defs)
+            self.stages = dict(stage_defs)
         else:
-            stages = {
+            # You can substitute your own PipelineStage class here
+            self.stages = OrderedDict({
                 "warp_scheduler": PipelineStage("WarpScheduler", self),
                 "fetch": PipelineStage("Fetch", self),
                 "decode": PipelineStage("Decode", self),
                 "execute": PipelineStage("Execute", self),
                 "writeback": PipelineStage("Writeback", self),
-            }
-        self.stages = stages
-        self.interfaces = []
+            })
 
-        # 2. Build normal pipeline / parallel connections
-        if connections is not None:
-            pipeline_connections = connections
-        else:
-            pipeline_connections = [
-                ("warp_scheduler", "fetch"),
-                ("fetch", "decode"),
-                ("decode", "execute"),
-                ("execute", "writeback"),
-            ]
+        self.interfaces: list[LatchInterface] = []
+
+        # === 2. Build pipeline connections ===
+        pipeline_connections = connections or [
+            ("warp_scheduler", "fetch"),
+            ("fetch", "decode"),
+            ("decode", "execute"),
+            ("execute", "writeback"),
+        ]
+
         for src, dst in pipeline_connections:
-            iface = StageInterface(f"if_{src}_{dst}", latency=1)
-            stages[src].add_output(iface)
-            stages[dst].add_input(iface)
-            stages[src].output_if = iface
-            stages[dst].input_if = iface
-            print(f"Made: if_{src}_{dst}")
+            iface = LatchInterface(f"if_{src}_{dst}", latency=1)
+            self.stages[src].out_latch = iface
+            self.stages[dst].in_latch = iface
+            print(f"[SM] Connected {src} → {dst} via {iface.name}")
             self.interfaces.append(iface)
 
-        # 3. Build control feedback connections (non-pipelined)
+        # === 3. Build feedback connections (non-pipelined control) ===
         feedbacks = feedbacks or []
         for src, dst in feedbacks:
-            fb = StageInterface(f"FB_{src}_{dst}", is_feedback=True)
-            stages[src].add_feedback(dst, fb)
-            stages[dst].add_feedback(src, fb)
+            fb = LatchInterface(f"FB_{src}_{dst}", is_feedback=True)
+            self.stages[src].feedbacks[dst] = fb
+            self.stages[dst].feedbacks[src] = fb
+            print(f"[SM] Feedback {src} ↔ {dst}")
 
+        # === 4. Initialize performance + logging ===
         self.global_cycle = 0
-        # Attach logger and perf counters (create defaults if none supplied)
-        self.logger = logger if logger is not None else LoggerBase(name="SM")
-        self.perf = perf if perf is not None else PerfCounterBase()
+        self.logger = logger if logger else LoggerBase(name="SM")
+        self.perf = perf if perf else PerfDomain(name="SM_Global")
 
-    def get_interface(self, name):
+        self.perf.derive("IPC", lambda c: c.get("instructions", 0) / max(c.get("cycles", 1), 1))
+        self.perf.derive("StallRatio", lambda c: c.get("stall_cycles", 0) / max(c.get("cycles", 1), 1))
+
+    # ---------------------------------------
+    # Interface helpers
+    # ---------------------------------------
+
+    def get_interface(self, name: str):
         return next((iface for iface in self.interfaces if iface.name == name), None)
-    
-    def push_instruction(self, inst, at_stage: str = "if_user_fetch"):
-        """
-        Inject an instruction or data payload into any pipeline stage or interface.
 
-        Parameters
-        ----------
-        inst : dict
-            The instruction or payload to inject.
-        at_stage : str
-            Target injection point. Can be a stage name ("fetch", "decode", etc.)
-            or a pipeline interface name ("if_user_fetch", "if_fetch_decode", etc.).
-        """
+    def push_instruction(self, inst, at_stage: str = "if_user_fetch"):
+        """Inject instruction/data into a latch or stage."""
         target_if = None
 
-        # --- Case 1: Direct interface name (e.g., "if_user_fetch", "if_fetch_decode")
+        # Case 1: direct interface name
         if at_stage.startswith("if_"):
             target_if = self.get_interface(at_stage)
             if not target_if:
-                print(f"[SM] No interface named '{at_stage}' found.")
+                print(f"[SM] No interface named '{at_stage}'.")
                 return False
-
-        # --- Case 2: Stage name (inject into first input)
         else:
+            # Case 2: stage name
             stage = self.stages.get(at_stage)
             if not stage:
-                print(f"[SM] No stage named '{at_stage}' found.")
+                print(f"[SM] No stage named '{at_stage}'.")
                 return False
-
-            if stage.inputs:
-                target_if = stage.inputs[0]
-            else:
-                print(f"[SM] Stage '{at_stage}' has no input interfaces.")
+            if not stage.in_latch:
+                print(f"[SM] Stage '{at_stage}' has no input latch.")
                 return False
+            target_if = stage.in_latch
 
-        # --- Perform send if ready
         if target_if.can_accept():
             print(f"[SM] Injecting into {target_if.name}: {inst}")
             target_if.send(inst)
@@ -376,37 +350,33 @@ class SM:
             print(f"[SM] Interface {target_if.name} not ready (stall).")
             return False
 
-    # def push_instruction(self, inst):
-    #     target_if = None
-    #     fetch = self.stages.get("fetch")
-    #     if fetch and fetch.outputs and fetch.outputs[0].can_accept():
-    #         print(f"[SM] Pushing instruction to fetch stage: {inst}")
-    #         fetch.outputs[0].send(inst)
+    # ---------------------------------------
+    # Simulation cycle
+    # ---------------------------------------
 
     def cycle(self):
+        """Advance one pipeline cycle."""
         self.global_cycle += 1
         self.perf.tick(1)
         self.perf.set_gauge("global_cycle", self.global_cycle)
 
+        # PHASE 1: Run all stages (their compute() or cycle())
+        for stage in self.stages.values():
+            stage.compute()
 
-        # === PHASE 1: Commit all interface values (clock edge)
+        # PHASE 2: Tick all latch interfaces (commit + wait countdown)
         for iface in self.interfaces:
             iface.tick()
-
-
-        # === PHASE 1: Evaluate stages (back-to-front prevents overwrite)
-        for stage in reversed(self.stages.values()):
-            stage.tick_internal()
-            stage.cycle()
 
         self.logger.debug(f"Completed cycle {self.global_cycle}")
 
     def print_pipeline_state(self):
         print(f"\n=== Cycle {self.global_cycle} ===")
         for name, stage in self.stages.items():
-            inst = stage.debug_state().get("current_inst", None)
-            print(f"{name:>10}: {inst if inst else '-'}")
-        print("\n")
+            curr = getattr(stage, "current_inst", None)
+            print(f"{name:>12}: {curr if curr else '-'}")
+        print()
+
 
 @dataclass
 class TB_Scheduler:
@@ -426,125 +396,133 @@ class TB_Scheduler:
 
 @dataclass
 class PipelineStage:
-    name: str
-    parent_core: object
+    """
+    Generic pipeline stage that uses handshake-based LatchInterface connections.
+    Handles inputs, outputs, feedbacks, and optional sub-units.
+    """
+    def __init__(self, name, parent_core):
+        self.name = name
+        self.parent_core = parent_core
+        self.perf = PerfDomain(self.name, parent=self.parent_core.perf)
+        self.inputs: list[LatchInterface] = []
+        self.outputs: list[LatchInterface] = []
+        self.feedback_links: dict[str, LatchInterface] = {}
+        self.subunits = []
 
-    inputs: list[StageInterface] = field(default_factory=list)
-    outputs: list[StageInterface] = field(default_factory=list)
-    feedback_links: dict = field(default_factory=dict)
-    subunits: list = field(default_factory=list)
+        self.cycle_count = 0
+        self.active_cycles = 0
+        self.stall_cycles = 0
+        self.instruction_count = 0
+        self.current_inst = None
 
-    cycle_count: int = 0
-    active_cycles: int = 0
-    stall_cycles: int = 0
-    instruction_count: int = 0
+    # -------------------------
+    # Interface management
+    # -------------------------
+    def add_input(self, latch: LatchInterface):
+        self.inputs.append(latch)
 
-    def add_input(self, interface: StageInterface):
-        self.inputs.append(interface)
+    def add_output(self, latch: LatchInterface):
+        self.outputs.append(latch)
 
-    def add_output(self, interface: StageInterface):
-        self.outputs.append(interface)
-    
-    def connect_interfaces(self, input_if: "StageInterface", output_if: "StageInterface"):
-        self.add_input(input_if)
-        self.add_output(output_if)
+    def connect_interfaces(self, input_latch: LatchInterface, output_latch: LatchInterface):
+        self.add_input(input_latch)
+        self.add_output(output_latch)
 
-    def add_feedback(self, name: str, interface: StageInterface):
-        """Add a non-pipelined feedback signal."""
-        self.feedback_links[name] = interface
+    def add_feedback(self, name: str, latch: LatchInterface):
+        """Attach a combinational (non-pipelined) feedback connection."""
+        self.feedback_links[name] = latch
 
     def add_subunit(self, fu):
         self.subunits.append(fu)
 
+    # -------------------------
+    # Core stage operation
+    # -------------------------
     def process(self, inst):
-        """Process an instruction; to be overridden by subclasses."""
+        """Main stage logic. Override this in subclasses."""
         self.current_inst = inst
         return inst
-    
-    def tick_internal(self):
-        """
-        Advance all subunits (functional units) and automatically handle their outputs.
-        This makes every FU behave consistently w.r.t. clocking and result propagation.
-        """
-        for fu in self.subunits:
-            if hasattr(fu, "tick"):
-                fu.tick()
 
-                # Automatically retrieve results if FU completed this cycle
-                result = None
-                if hasattr(fu, "get_output"):
-                    result = fu.get_output()
-
-                if result is not None:
-                    # Forward to next stage (default first output)
-                    if self.outputs:
-                        sent = False
-                        for out in self.outputs:
-                            if out.can_accept():
-                                out.send(result)
-                                sent = True
-                                print(f"[{self.name}] auto-forwarded result from {fu.name}: {result}")
-                                break
-                        if not sent:
-                            print(f"[{self.name}] Output stalled for result from {fu.name}")
-                            self.stall_cycles += 1
-
-                    # Send feedbacks automatically (if FU defines ihit, etc.)
-                    if hasattr(self, "feedback_links"):
-                        for fb_name, fb_if in self.feedback_links.items():
-                            if fb_if.is_feedback:
-                                fb_if.send(result)
-                                print(f"[{self.name}] Sent feedback {fb_name} from {fu.name}: {result}")
-
-
-    def cycle(self):
-        """Advance one cycle; handle multiple input/output interfaces."""
+    def compute(self):
+        """Main pipeline execution logic, called once per cycle."""
+        self.perf.tick()
         self.cycle_count += 1
         received = None
 
-        # Try to receive from any valid input (simple priority arbiter)
+        # Try to receive from first available valid input latch
         for inp in self.inputs:
             data = inp.receive()
             if data:
                 received = data
                 break
 
+        # If instruction/data received, process it
         if received:
+            self.active_cycles += 1
+            self.instruction_count += 1
             result = self.process(received)
+            self.current_inst = result or received
 
-            self.current_inst = result if result is not None else received
-            if result is not None:
-                print(f"[{self.name}] Outputting result: {result}")
-                if isinstance(result, tuple):
-                    data, out_idx = result
-                    print("Info: ", format(data))
-                    if self.outputs[out_idx].can_accept():
-                        self.outputs[out_idx].send(data)
-                    else:
-                        self.stall_cycles += 1
-                else:
-                    if self.outputs and self.outputs[0].can_accept():
-                        self.outputs[0].send(result)
-                    else:
-                        self.stall_cycles += 1
+            # Try to send output downstream
+            if result is not None and self.outputs:
+                out_latch = self.outputs[0]
+                sent = out_latch.send(result)
+                if not sent:
+                    inp.set_wait(1)  # Backpressure: stall upstream one cycle
+                    self.stall_cycles += 1
+                    print(f"[{self.name}] Output stalled, backpressure applied.")
+            else:
+                self.stall_cycles += 1
         else:
             self.stall_cycles += 1
             self.current_inst = None
 
+        # Tick all functional subunits (for stages that contain ALUs, etc.)
+        self.tick_subunits()
+
+    # -------------------------
+    # Subunit handling
+    # -------------------------
+    def tick_subunits(self):
+        for fu in self.subunits:
+            if hasattr(fu, "tick"):
+                fu.tick()
+
+                # Automatically retrieve and forward results
+                result = None
+                if hasattr(fu, "get_output"):
+                    result = fu.get_output()
+
+                if result is not None and self.outputs:
+                    out_latch = self.outputs[0]
+                    sent = out_latch.send(result)
+                    if sent:
+                        print(f"[{self.name}] Auto-forwarded from {fu.name}: {result}")
+                    else:
+                        self.stall_cycles += 1
+                        print(f"[{self.name}] FU {fu.name} stalled downstream.")
+                elif result is not None:
+                    print(f"[{self.name}] No output latch for FU {fu.name} result: {result}")
+
+    # -------------------------
+    # Debugging / visualization
+    # -------------------------
     def debug_state(self):
-        # Show a summary of the current instruction (e.g., PC or mnemonic)
+        """Summarize current state for pretty-printing."""
         inst_info = None
-        if hasattr(self, 'current_inst') and self.current_inst is not None:
+        if self.current_inst is not None:
             inst = self.current_inst
             if isinstance(inst, dict):
-                if 'pc' in inst:
-                    inst_info = inst['pc']
-                elif 'decoded_fields' in inst and 'orig_inst' in inst['decoded_fields'] and 'pc' in inst['decoded_fields']['orig_inst']:
-                    inst_info = f"pc=0x{inst['decoded_fields']['orig_inst']['pc']:x}"
+                if "pc" in inst:
+                    inst_info = f"pc=0x{inst['pc']:x}"
+                elif "decoded_fields" in inst and "orig_inst" in inst["decoded_fields"]:
+                    pc = inst["decoded_fields"]["orig_inst"].get("pc", None)
+                    inst_info = f"pc=0x{pc:x}" if pc else str(inst)
                 else:
                     inst_info = str(inst)
             else:
                 inst_info = str(inst)
+
         return {
             "name": self.name,
             "cycle_count": self.cycle_count,
@@ -553,4 +531,3 @@ class PipelineStage:
             "instruction_count": self.instruction_count,
             "current_inst": inst_info,
         }
-       
