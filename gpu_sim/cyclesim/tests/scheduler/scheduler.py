@@ -24,6 +24,7 @@ class SchedulerStage(PipelineStage):
 
         # static shit
         self.warp_count: int = warp_count
+        self.num_groups: int = (warp_count + 1) // 2
         self.warp_size: int = warp_size
 
         # warp table
@@ -39,4 +40,8 @@ class SchedulerStage(PipelineStage):
 
         # could add perf counters
     
-    def schedule(self)
+    # PURE ROUND ROBIN RIGHT NOW, NEED TO FIND THE RR_INDEX
+    def schedule(self):
+        # arbitration
+
+        # create instruction object with pc and warp ids/group ids
