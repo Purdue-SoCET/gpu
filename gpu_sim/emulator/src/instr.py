@@ -500,6 +500,10 @@ class B_Instr_0(Instr):
 
         # Write to predicate register: PR[local_thread_id] = result
         pred_reg_file.write(global_thread_id, Bits(uint=result, length=1))
+        if(result):
+            print(f"Thread{global_thread_id}: branch taken")
+        else:
+            print(f"Thread{global_thread_id}: branch not taken")
         return None
 
 class U_Instr(Instr):
