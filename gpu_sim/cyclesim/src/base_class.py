@@ -15,7 +15,8 @@ from typing import Optional
 from unicodedata import name
 from dataclasses import dataclass, field
 from typing import Optional
-
+from reg_file import *
+from instr import *
 import csv
 from collections import defaultdict
 

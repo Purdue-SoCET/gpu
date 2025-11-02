@@ -1,11 +1,11 @@
 import sys, os
 
-# Dynamically locate the project root (SoCET_GPU_FuncSim)
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../.."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from gpu.gpu_sim.cyclesim.src.base_class import PipelineStage, SM, LoggerBase, PerfDomain, LatchInterface
+from emulator.src.instr import *
+from cyclesim.src.base_class import PipelineStage, SM, LoggerBase, PerfDomain, LatchInterface
 
 from collections import deque
 from dataclasses import dataclass, field
@@ -53,6 +53,7 @@ class FetchStage(PipelineStage):
         self.pending_req = inst
         return inst
 
+#This can be removed and replaced with Bitstring!!
 def make_raw(op7: int, rd: int = 1, rs1: int = 2, mid6: int = 3, pred: int = 0, packet_start: bool = False, packet_end: bool = False) -> int:
         """Construct a 32-bit instruction word according to the DecodeStage layout:
         bits [6:0]   = opcode7
@@ -74,11 +75,10 @@ def make_raw(op7: int, rd: int = 1, rs1: int = 2, mid6: int = 3, pred: int = 0, 
         )
         return raw
     
-class ICacheFU:
-    def __init__(self, name="ICacheFU", latency=3):
-        self.name = name
-        self.latency = latency
-        self.icache_lut = {
+class ICacheFU():
+    def __init__(self, latency=3):
+        super().__init__()
+        self.icache_lut = { #what is this?!
             0x100: make_raw(0x00, rd=1, rs1=2, mid6=3),
             0x104: make_raw(0x10, rd=5, rs1=6, mid6=0),
             0x108: make_raw(0x20, rd=2, rs1=3, mid6=4),
@@ -103,7 +103,7 @@ class ICacheFU:
 
         # Fast path: cache hit
         if pc in self.icache_lut:
-            raw = self.icache_lut[pc]
+            raw = self.icache_lut[pc] #doesn't pass opcode, since cache only contains register 
             result = {"pc": pc, "warp_id": warp, "raw": raw, "ihit": True}
             self.completed.append(result)
             print(f"[{self.name}] IMMEDIATE HIT  pc=0x{pc:x}")
@@ -276,6 +276,7 @@ class DecodeStage(PipelineStage):
         low3 = opcode7 & 0x7
 
         # Build opcode -> mnemonic map from the provided table (subset implemented)
+        #remove this dumb clanker stuff!
         opcode_map = {
             # R-type (high4 = 0b0000)
             0b0000000: "add",
@@ -524,7 +525,8 @@ class SM_Test(SM):
         # Now build stages
         fetch = FetchStage(self)
         icache = ICacheStage(self, miss_latency=3)
-        decode = DecodeStage(self)
+        instr = I_Instr_0(op=I_Op_0.ADDI, rd=Bits(uint=0, length=5), rs1=Bits(uint=0, length=5), imm=Bits(int=0, length=12)) #NOP
+        decode = instr.decode(self)
         ibuffer = IBufferStage(self)
         end = PipelineStage("EndStage", self)   # ✅ second arg must be self, not "SM_Test" string
 
