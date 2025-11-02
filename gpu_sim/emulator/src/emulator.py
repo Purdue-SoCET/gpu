@@ -86,10 +86,10 @@ def emulator(input_file, warp, mem):
 
         # decode
         instr = I_Instr_0(op=I_Op_0.ADDI, rd=Bits(uint=0, length=5), rs1=Bits(uint=0, length=5), imm=Bits(int=0, length=12)) #NOP
-        instr.decode(instruction=line,pc=warp.pc.int)
+        instr = instr.decode(instruction=line,pc=warp.pc.int)
         # pc += 4 # NOTE: temporary until PC incrementing is figured out. How will this change with scheduling?
         halt = warp.eval(instr=instr, pred_reg_file=pred_reg_file, mem=mem) #how to pass in mem, when different eval want/don't want it?
-        print(f"pc={warp.pc.int}, pred={pred_reg_file.arr}")
+        print(f"pc={warp.pc.int}")
         if(halt):
             print("halted")
             break

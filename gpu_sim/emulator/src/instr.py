@@ -125,6 +125,7 @@ class Instr(ABC):
                 print(f"halt, funct={op}, {funct3}")
             case _:
                 print("Undefined opcode")
+        return self
 
 
 class R_Instr_0(Instr):
@@ -177,7 +178,7 @@ class R_Instr_0(Instr):
 
         out = result & 0xFFFFFFFF
         t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        return self
         
 class R_Instr_1(Instr):
     def __init__(self, op: R_Op_1, rs1: Bits, rs2: Bits, rd: Bits) -> None:
@@ -232,7 +233,7 @@ class R_Instr_1(Instr):
 
         # out = result & 0xFFFFFFFF #shouldn't need this, since Bits already protects against this
         t_reg.write(self.rd, result) #result should already be Bits class
-        return False
+        return None
         # t_reg.write(self.rd, Bits(int=out, length=32))
 
 class I_Instr_0(Instr):
@@ -267,7 +268,7 @@ class I_Instr_0(Instr):
 
         out = result
         t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        return None
 
 class I_Instr_1(Instr):
     def __init__(self, op: I_Op_1, rs1: Bits, rd: Bits, imm: Bits) -> None:
@@ -297,7 +298,7 @@ class I_Instr_1(Instr):
 
         out = result & 0xFFFFFFFF
         t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        return None
 
 class I_Instr_2(Instr):
     def __init__(self, op: I_Op_2, rs1: Bits, rd: Bits, imm: Bits, pc: Bits = None) -> None:
@@ -365,8 +366,8 @@ class I_Instr_2(Instr):
                 raise NotImplementedError(f"I-Type operation {self.op} not implemented yet or doesn't exist.")
             
         t_reg.write(self.rd, Bits(int=result, length=32))
-        return False
-        # return self.pc # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
+        return None
+        # return None.pc # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
 
 class F_Instr(Instr):
     def __init__(self, op: F_Op, rs1: Bits, rd: Bits) -> None:
@@ -419,7 +420,7 @@ class F_Instr(Instr):
         else:
             # For floating point results, write as float
             t_reg.write(self.rd, Bits(float=result, length=32))
-        return False
+        return None
 
 class S_Instr_0(Instr):
     def __init__(self, op: S_Op_0, rs1: Bits, rs2: Bits, imm: Bits) -> None:
@@ -454,7 +455,7 @@ class S_Instr_0(Instr):
             
             case _:
                 raise NotImplementedError(f"S-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
 
 class B_Instr_0(Instr):
     def __init__(self, op: B_Op_0, rs1: Bits, rs2: Bits) -> None:
@@ -499,7 +500,7 @@ class B_Instr_0(Instr):
 
         # Write to predicate register: PR[local_thread_id] = result
         pred_reg_file.write(global_thread_id, Bits(uint=result, length=1))
-        return False
+        return None
 
 class U_Instr(Instr):
     def __init__(self, op: U_Op, rd: Bits, imm: Bits, pc: Bits = None) -> None:
@@ -549,7 +550,7 @@ class U_Instr(Instr):
             
             case _:
                 raise NotImplementedError(f"U-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
 
 class C_Instr(Instr):
     def __init__(self, op: C_Op, rd: Bits, csr: Bits, csr_file=None) -> None:
@@ -578,7 +579,7 @@ class C_Instr(Instr):
             
             case _:
                 raise NotImplementedError(f"C-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
 
 class J_Instr(Instr):
     def __init__(self, op: J_Op, rd: Bits, imm: Bits, pc: Bits) -> None:
@@ -605,8 +606,8 @@ class J_Instr(Instr):
                 raise NotImplementedError(f"J-Type operation {self.op} not implemented yet or doesn't exist.")
         
         t_reg.write(self.rd, Bits(int=self.pc.int, length=32))
-        return False
-        # return self.pc
+        return None
+        # return None.pc
 
 class P_Instr(Instr):
     def __init__(self, op: P_Op, rs1: Bits, rs2: Bits, pc: Bits, pred_reg_file: Predicate_Reg_File) -> None:
@@ -632,7 +633,7 @@ class P_Instr(Instr):
                     self.pc = Bits(int=self.pc.int + 4, length=32)
             case _:
                 raise NotImplementedError(f"P-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
         # return self.pc
 
 class H_Instr(Instr): #returns true
@@ -644,7 +645,7 @@ class H_Instr(Instr): #returns true
         # print(f"{self.funct3}, {self.op}")
         return True
         # match self.op:
-        #     # Halt Operation
+        #     # `Halt` Operation
         #     case H_Op.HALT:
         #         print(f"HALT instruction executed by thread ID {global_thread_id}")
         #         return True  # Signal that execution should halt
