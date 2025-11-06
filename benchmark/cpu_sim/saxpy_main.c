@@ -20,7 +20,7 @@ int main() {
 
     for(int i = 0; i < ARR_SIZE; i++) {
         arr1[i] = i;
-        arr2[i] = i;
+        arr2[i] = 2*i;
     }
 
     saxpy_arg_t arg;
