@@ -135,7 +135,7 @@ class L1ICache(FunctionalUnit):
                 self.resp_queue.append(FetchResponse(req.uuid, req.pc, block_data, hit=True))
             else:
                 # Cache miss
-                if self.miss_policy == "blocking" and self.active_miss:
+                if self.miss_policy == "non-blocking" and self.active_miss:
                     # Stall until current miss completes
                     self.req_queue.appendleft(req)
                     return

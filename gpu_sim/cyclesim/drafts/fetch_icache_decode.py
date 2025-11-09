@@ -16,12 +16,15 @@ ICacheMemReqIF = LatchIF(name="ICacheMemReqIF")
 MemICacheRespIF = LatchIF(name="MemICacheRespIF")
 DecodeIssue_IbufferIF = LatchIF(name = "DecodeIIF")  
 
-de_sched_EOP = ForwardingIF(name = "Decode_Scheduler_EOP")
-de_sched_EOP_WID = ForwardingIF(name = "Decode_Scheduler_WARPID")
-de_sched_BARR = ForwardingIF(name = "Deecode_Schedular_BARRIER")
-de_sched_B_WID = ForwardingIF(name = "Decode_Scheduler_BARRIER_WARPID")
-de_sched_B_GID = ForwardingIF(name = "Decode_Scheduler_BARRIER_GROUPID")
-de_sched_B_PC = ForwardingIF(name = "Decode_Scheduler_BARRIER_PC")
+de_scheds = ForwardingIF(name = "Decode_Scheduler_Signals")
+
+@dataclass
+class DecodeType:
+    halt: False
+    EOP: False
+    MOP: False
+    Barrier: False 
+
 icache_de_ihit = ForwardingIF(name = "ICache_Decode_Ihit")
 
 
@@ -401,8 +404,14 @@ class DecodeStage(Stage):
         inst.pred = pred_mask or [True] * 32
 
         # Send forward signals
+        # STATE ENUMERATION FOR TYPE OF SIGNALS:
+        # EOP
+        # MOP
+        # HALT
+        # BARRIER
+        # if something is of this set this in the DecodeType.sel = True, everything else is false.
         for name, f in self.forward_ifs_write.items():
-            f.push({"decoded": True, "warp": inst.warp, "pc": inst.pc})
+            f.push({"decoded": True, "type":, "pc": self.pc)
 
         print(
             f"[{self.name}] Decoded opcode={mnemonic}, rs1={rs1}, rs2={mid6}, rd={rd}, "
@@ -446,6 +455,7 @@ def make_test_pipeline():
                        opcode=0, rs1=0, rs2=0, rd=0, pred=0, packet=None)
         # Build DecodeStage fully compatible with Stage
     fetch_stage = FetchStage(name="Fetch", 
+                             behind_latch=None,
                              ahead_latch=FetchICacheIF
                             )
     icache_stage = ICacheStage(name = "ICache",
@@ -453,7 +463,7 @@ def make_test_pipeline():
                                ahead_latch=ICacheDecodeIF,
                                mem_req_if=ICacheMemReqIF,
                                mem_resp_if=MemICacheRespIF,
-                               backend=mem_backend,
+                            #    backend=mem_backend,
                                cache_config=cache_cfg,
                                forward_ifs_write={"ihit": icache_de_ihit}
                                )
@@ -473,12 +483,7 @@ def make_test_pipeline():
         ahead_latch=DecodeIssue_IbufferIF,
         forward_ifs_read={"ICache_Decode_Ihit": icache_de_ihit},
         forward_ifs_write={
-            "Decode_Scheduler_EOP": de_sched_EOP,
-            "Decode_Scheduler_EOP_WARPID": de_sched_EOP_WID,
-            "Decode_Schedular_BARRIER": de_sched_BARR,
-            "Decode_Scheduler_BARRIER_WARPID": de_sched_B_WID,
-            "Decode_Scheduler_BARRIER_GROUPID": de_sched_B_GID,
-            "Decode_Scheduler_BARRIER_PC": de_sched_B_PC,
+            "Decode_Scheduler_EOP": de_scheds
         }
     )
 
