@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "include/kernel_run.h"
 
 // Include all needed kernels
@@ -35,8 +36,10 @@ int main() {
     dim_t block; block.x = ARR_SIZE; block.y = 1; block.z = 1;
     run_kernel(kernel_saxpy, grid, block, (void*)&arg);
 
-    for(int i = 0; i < ARR_SIZE; i++) {
-        printf("0x%08x 0x%08x\n", BASE_Y_ADDRESS + sizeof(float)*i, arr2[i]);
+    for (int i = 0; i < ARR_SIZE; i++) {
+        uint32_t bits;
+        memcpy(&bits, &arr2[i], sizeof bits);   // safe reinterp
+        printf("0x%08x 0x%08x\n", (uint32_t)(BASE_Y_ADDRESS + 4*i), bits);
     }
 
     free(mem_space);
