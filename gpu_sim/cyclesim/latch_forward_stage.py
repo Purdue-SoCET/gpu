@@ -3,12 +3,21 @@ from typing import Any, Dict, List, Optional
  
 @dataclass
 class Instruction:
-    iid: int
     pc: int
+    intended_FU: str
+    warp_id: int
+    warp_group_id: int
+    rs1: int
+    rs2: int
+    rd: int
+    opcode: str # this probably isn't right
+    rdat1: int # needs to be bits type I believe
+    rdat2: int # needs to be bits type I believe
+    wdat: int # needs to be bits type I believe
     issued_cycle: Optional[int] = None
-    stage_entry: Dict[str, int] = field(default_factory=dict)   # stage -> first cycle seen
-    stage_exit:  Dict[str, int] = field(default_factory=dict)   # stage -> last cycle completed
-    fu_entries:  List[Dict]     = field(default_factory=list)   # [{fu:"ALU", enter: c, exit: c}, ...]
+    stage_entry: Optional[Dict[str, int]] = field(default_factory=dict)   # stage -> first cycle seen
+    stage_exit:  Optional[Dict[str, int]] = field(default_factory=dict)   # stage -> last cycle completed
+    fu_entries:  Optional[List[Dict]]     = field(default_factory=list)   # [{fu:"ALU", enter: c, exit: c}, ...]
     wb_cycle: Optional[int] = None
 
     def mark_stage_enter(self, stage: str, cycle: int):
