@@ -3,6 +3,12 @@ from typing import Any, Dict, List, Optional
 from collections import deque
 from bitstring import Bits 
 
+@dataclass
+class DecodeType:
+    halt: bool = False
+    EOP: bool = False
+    MOP: bool = False
+    Barrier: bool = False
 ###TEST CODE BELOW###
 @dataclass
 class ICacheEntry:
@@ -47,7 +53,7 @@ class Instruction:
     rd: int
     pred: Optional[Any] = None
     packet: Optional[Any] = None
-
+    type: Optional[DecodeType] = None
     issued_cycle: Optional[int] = None
     stage_entry: Dict[str, int] = field(default_factory=dict)   # stage -> first cycle seen
     stage_exit:  Dict[str, int] = field(default_factory=dict)   # stage -> last cycle completed
