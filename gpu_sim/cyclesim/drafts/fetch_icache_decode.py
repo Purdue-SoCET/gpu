@@ -17,8 +17,6 @@ MemICacheRespIF = LatchIF(name="MemICacheRespIF")
 DecodeIssue_IbufferIF = LatchIF(name = "DecodeIIF")  
 
 de_scheds = ForwardingIF(name = "Decode_Scheduler_Signals")
-
-
 icache_de_ihit = ForwardingIF(name = "ICache_Decode_Ihit")
 
 
@@ -104,9 +102,6 @@ class PredicateRegFile():
             # Store negated version
             self.reg_file[prf_wr_wsel][prf_wr_psel][1] = [not b for b in bits]
 
-from base import Stage, LatchIF, ForwardingIF
-from dataclasses import dataclass
-from typing import Optional, Any, Dict
 
 class FetchStage(Stage):
     """

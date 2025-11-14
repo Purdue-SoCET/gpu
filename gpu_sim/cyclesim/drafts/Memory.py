@@ -60,12 +60,30 @@ class Mem:
         atexit.register(self.dump_on_exit)
 
 
-    def read(self, addr: int, bytes: int) -> Bits:
-        """Return a Bits object containing bytes*8 bits from memory."""
-        data_bytes = bytearray()
-        for i in range(bytes):
-            data_bytes.append(self.memory.get(addr + i, 0))
-        return Bits(bytes=bytes(data_bytes))   # unified Bits output
+    def read(self, addr: int, size: int = 4) -> Bits:
+        """
+        Reads `size` bytes starting at `addr`.
+        Missing/uninitialized bytes return 0.
+        Output is always a `Bits` object.
+        """
+
+        data_bytes = []
+
+        for offset in range(size):
+            byte_addr = addr + offset
+            value = self.memory.get(byte_addr, 0)   # returns ONE BYTE (0–255)
+            
+            # if your memory stored words, handle splitting
+            if value > 0xFF:
+                # extract the correct byte
+                shift = (offset % 4) * 8
+                value = (value >> shift) & 0xFF
+
+            data_bytes.append(value)
+
+        # interpret internal memory as little endian
+        return Bits(bytes=bytes(reversed(data_bytes)))
+
 
     def write(self, addr: int, data: Bits, bytes_t: int) -> None:
         """Accept Bits and store its byte contents."""
