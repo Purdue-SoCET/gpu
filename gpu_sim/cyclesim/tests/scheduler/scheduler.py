@@ -5,6 +5,13 @@ from typing import List, Any, Optional, Dict
 from enum import Enum
 
 @dataclass
+class DecodeType:
+    halt: bool = False
+    EOP: bool = False
+    MOP: bool = False
+    Barrier: bool = False
+
+@dataclass
 class Instruction:
     iid: int
     pc: int
@@ -169,12 +176,16 @@ class SchedulerStage(Stage):
                 print(f"[{self.name}] Stalled due to wait from next stage")
                 return None
             
-        # pop from forwarding units
+        # pop from decode
+        decode_ctrl = self.forward_ifs_read["Decode_Scheduler"].pop()
+        issue_ctrl = self.forward_ifs_read["Issue_Scheduler"].pop()
+        wb_ctrl = self.forward_ifs_read["WB_Scheduler"].pop()
         
 
         # check end of packet decode
-        if EOP:
-            if self.warp_table[EOP.warp_id].state == WarpState.READY then self.warp_table[EOP.warp_id].state = WarpState.SHORTSTALL
+        if decode_ctrl["type"] == DecodeType.EOP:
+            if self.warp_table[decode_ctrl["warp"]].state == WarpState.READY:
+                self.warp_table[decode_ctrl["warp"]].state = WarpState.SHORTSTALL
 
         # check from issue and memory
         for warp_group in issue:
@@ -188,14 +199,16 @@ class SchedulerStage(Stage):
                 self.warp_table[(warp_group // 2) + 1].state = WarpState.SHORTSTALL
 
         # decrement counter from writeback from writeback
-        self.warp_table[WB.warp].in_flight = max(self.warp_table[WB.warp].in_flight - 1, 0)
-        if self.warp_table[WB.warp].state == WarpState.SHORTSTALL and self.warp_table[WB.warp].in_flight == 0:
-            self.warp_table[WB.warp].state = WarpState.READY
+        self.warp_table[wb_ctrl["warp"]].in_flight = max(self.warp_table[wb_ctrl["warp"]].in_flight - 1, 0)
+        if self.warp_table[wb_ctrl["warp"]].state == WarpState.SHORTSTALL and self.warp_table[wb_ctrl["warp"]].in_flight == 0:
+            self.warp_table[wb_ctrl["warp"]].state = WarpState.READY
 
         # BARRIER
-        if EOP is barrier:
-            self.warp_table[EOP.warp_id].state == WarpState.BARRIER
+        if decode_ctrl["type"] == DecodeType.Barrier:
+            self.warp_table[decode_ctrl["warp"]].state == WarpState.BARRIER
             self.at_barrier = self.at_barrier + 1
+
+        # THIS ONLY WORKS RIGHT NOW FOR ONE TB
         if self.at_barrier == self.warp_count:
             for warp in range(self.warp_count):
                 self.warp_table[warp].state = WarpState.READY
