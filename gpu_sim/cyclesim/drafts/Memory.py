@@ -59,30 +59,28 @@ class Mem:
                 addr += 4  # next word starts 4 bytes later
         atexit.register(self.dump_on_exit)
 
-
     def read(self, addr: int, size: int = 4) -> Bits:
         """
         Reads `size` bytes starting at `addr`.
-        Missing/uninitialized bytes return 0.
-        Output is always a `Bits` object.
+        Missing bytes are zero.
+        Returns little-endian byte order.
         """
 
         data_bytes = []
 
         for offset in range(size):
             byte_addr = addr + offset
-            value = self.memory.get(byte_addr, 0)   # returns ONE BYTE (0–255)
-            
-            # if your memory stored words, handle splitting
+            value = self.memory.get(byte_addr, 0)
+
+            # If some old word-format data is present (should not occur)
             if value > 0xFF:
-                # extract the correct byte
                 shift = (offset % 4) * 8
                 value = (value >> shift) & 0xFF
 
             data_bytes.append(value)
 
-        # interpret internal memory as little endian
-        return Bits(bytes=bytes(reversed(data_bytes)))
+        # Little-endian, DO NOT REVERSE
+        return Bits(bytes=bytes(data_bytes))
 
 
     def write(self, addr: int, data: Bits, bytes_t: int) -> None:
