@@ -6,10 +6,10 @@ from enum import Enum
 
 @dataclass
 class DecodeType:
-    halt: bool = False
-    EOP: bool = False
-    MOP: bool = False
-    Barrier: bool = False
+    halt: int = 0
+    EOP: int = 1
+    MOP: int = 2
+    Barrier: int = 3
 
 @dataclass
 class Instruction:
@@ -58,7 +58,7 @@ class WarpGroup:
 
 @dataclass
 class ForwardingIF:
-    payload: Optional[Any]
+    payload: Optional[Any] = None
     wait: bool = False
     name: str = field(default="BackwardIF", repr=False)
 
