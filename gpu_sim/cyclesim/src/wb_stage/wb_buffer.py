@@ -39,12 +39,12 @@ class WritebackBufferConfig:
     @classmethod
     def get_default_config(cls) -> WritebackBufferConfig:
         return cls(
-            count_scheme=WritebackBufferCount.BUFFER_PER_BANK,
+            count_scheme=WritebackBufferCount.BUFFER_PER_FSU,
             size_scheme=WritebackBufferSize.FIXED,
             structure=WritebackBufferStructure.QUEUE,
             primary_policy=WritebackBufferPolicy.CAPACITY_PRIORITY,
             secondary_policy=WritebackBufferPolicy.AGE_PRIORITY,
-            size=16,
+            size=8,
             fsu_priority=None
         )
 
@@ -267,6 +267,8 @@ class WritebackBuffer:
         for bank, buffer in buffers_to_writeback.items():
             if buffer is not None:
                 values_to_writeback[bank] = buffer.pop()
+                for i in range(32):
+                  values_to_writeback[bank].wdat[i] = None if values_to_writeback[bank].predicate[i].bin == '0' else values_to_writeback[bank].wdat[i]
                 # Track writeback for the source buffer
                 for buf_name, buf in self.buffers.items():
                     if buf is buffer:
@@ -276,6 +278,14 @@ class WritebackBuffer:
         data_to_buffers = {name: [] for name in self.buffer_names}
         for latch in self.behind_latches.values():
             in_data = latch.snoop()
+            active_threads = 0
+            for i in range(32):
+                if in_data is not None and in_data.predicate[i].bin == '1':
+                    active_threads += 1
+            if active_threads == 0:
+                # No active threads, just pop to clear latch
+                latch.pop()
+                continue
             if in_data is not None and in_data.target_bank is not None:
                 match self.count_scheme:
                     case WritebackBufferCount.BUFFER_PER_FSU:

@@ -19,9 +19,9 @@ class PerfCount:
         
         # Computed statistics (will be calculated at end)
         self.average_buffer_occupancy: float = 0.0
-        self.average_instruction_buffer_age: float = 0.0
-        self.percentile_10_buffer_occupancy: float = 0.0
-        self.percentile_1_buffer_occupancy: float = 0.0
+        self.average_instruction_age: float = 0.0
+        self.percentile_90_buffer_occupancy: float = 0.0
+        self.percentile_99_buffer_occupancy: float = 0.0
     
     def increment(
         self, 
@@ -78,11 +78,11 @@ class PerfCount:
         """
         if len(self._occupancy_samples) > 0:
             self.average_buffer_occupancy = float(np.mean(self._occupancy_samples))
-            self.percentile_10_buffer_occupancy = float(np.percentile(self._occupancy_samples, 10))
-            self.percentile_1_buffer_occupancy = float(np.percentile(self._occupancy_samples, 1))
+            self.percentile_90_buffer_occupancy = float(np.percentile(self._occupancy_samples, 90))
+            self.percentile_99_buffer_occupancy = float(np.percentile(self._occupancy_samples, 99))
         
         if len(self._instruction_ages) > 0:
-            self.average_instruction_buffer_age = float(np.mean(self._instruction_ages))
+            self.average_instruction_age = float(np.mean(self._instruction_ages))
 
     def to_csv(self, directory: str = ".") -> None:
         """Output performance counter statistics to CSV file."""
@@ -100,9 +100,9 @@ class PerfCount:
             'store_cycles': self.store_cycles,
             'writeback_cycles': self.writeback_cycles,
             'average_buffer_occupancy': self.average_buffer_occupancy,
-            'average_instruction_buffer_age': self.average_instruction_buffer_age,
-            'percentile_10_buffer_occupancy': self.percentile_10_buffer_occupancy,
-            'percentile_1_buffer_occupancy': self.percentile_1_buffer_occupancy
+            'average_instruction_age': self.average_instruction_age,
+            'percentile_90_buffer_occupancy': self.percentile_90_buffer_occupancy,
+            'percentile_99_buffer_occupancy': self.percentile_99_buffer_occupancy
         }
         
         df = pd.DataFrame([stats_dict])
@@ -127,9 +127,9 @@ class PerfCount:
                 'store_cycles': pc.store_cycles,
                 'writeback_cycles': pc.writeback_cycles,
                 'average_buffer_occupancy': pc.average_buffer_occupancy,
-                'average_instruction_buffer_age': pc.average_instruction_buffer_age,
-                'percentile_10_buffer_occupancy': pc.percentile_10_buffer_occupancy,
-                'percentile_1_buffer_occupancy': pc.percentile_1_buffer_occupancy
+                'average_instruction_age': pc.average_instruction_age,
+                'percentile_90_buffer_occupancy': pc.percentile_90_buffer_occupancy,
+                'percentile_99_buffer_occupancy': pc.percentile_99_buffer_occupancy
             }
             data.append(stats_dict)
         

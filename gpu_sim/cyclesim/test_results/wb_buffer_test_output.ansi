@@ -24,17 +24,17 @@
 [96m================================================================================[0m
 
 [92m✓ PASS[0m | Multiple FSUs writing in same cycle
-  Successfully handled multiple FSU inputs, 2 stored
+  Successfully handled multiple FSU inputs, 3 stored
   Pushed 3 instructions from different FSUs
-  Total buffer occupancy after tick: 2
+  Total buffer occupancy after tick: 3
 
 [96m================================================================================[0m
 [1m[96m  BUFFER OVERFLOW - Config_Default[0m[0m
 [96m================================================================================[0m
 
 [92m✓ PASS[0m | Buffer overflow handling
-  Buffer respected capacity limit: 1/16
-  Testing buffer 'bank_0' with capacity 16
+  Buffer respected capacity limit: 1/8
+  Testing buffer 'Alu_int_0' with capacity 8
 
 [96m================================================================================[0m
 [1m[96m  EMPTY BUFFER BEHAVIOR - Config_Default[0m[0m
@@ -49,8 +49,8 @@
 [96m================================================================================[0m
 
 [92m✓ PASS[0m | Writing with one slot available
-  Writebacks occurred during fill (expected for some configs): 1/16
-  Buffer filled to 1/16
+  Writebacks occurred during fill (expected for some configs): 1/8
+  Buffer filled to 1/8
 
 [96m================================================================================[0m
 [1m[96m  CONCURRENT READ/WRITE - Config_Default[0m[0m
@@ -86,25 +86,44 @@
 
 [92m✓ PASS[0m | Performance counter metrics
   Performance counters are tracking metrics
-  Found 2 performance counters
-  Total cycles: 65
-  Store cycles: 60
-  Writeback cycles: 54
+  Found 9 performance counters
+  Total cycles: 57
+  Store cycles: 52
+  Writeback cycles: 46
 
 [96m================================================================================[0m
 [1m[96m  ALL BUFFERS FULL - Config_Default[0m[0m
 [96m================================================================================[0m
 
 [92m✓ PASS[0m | All buffers full simultaneously
-  Partial fill: 1/32 (some writebacks may have occurred)
-  Total occupancy: 1/32
+  Partial fill: 56/72 (some writebacks may have occurred)
+  Total occupancy: 56/72
+
+[96m================================================================================[0m
+[1m[96m  PREDICATE MASKING - Config_Default[0m[0m
+[96m================================================================================[0m
+
+[92m✓ PASS[0m | All lanes enabled (predicate all 1s)
+  All 32 lanes correctly enabled in stored instruction
+  Enabled lanes: 32/32
+
+[92m✓ PASS[0m | Half lanes enabled (alternating predicate pattern)
+  Alternating predicate pattern correctly preserved (16 lanes enabled)
+  Enabled lanes: 16/32
+
+[92m✓ PASS[0m | All lanes disabled (predicate all 0s)
+  Instruction with all predicates disabled not stored (acceptable behavior)
+
+[92m✓ PASS[0m | Predicate preservation through store and writeback
+  Predicate pattern correctly preserved through writeback (first 16 lanes enabled)
+  Written back to bank_1, enabled lanes: 16/32
 
 [96m================================================================================[0m
 [1m[96m  TEST RESULTS SUMMARY - Config_Default[0m[0m
 [96m================================================================================[0m
 
-Total Tests: 10
-[92mPassed: 10[0m
+Total Tests: 14
+[92mPassed: 14[0m
 Failed: 0
 [92mPass Rate: 100.0%[0m
 [92m
@@ -201,15 +220,34 @@ Performance counters exported to: ./test_results/Config_Default[0m
 [96m================================================================================[0m
 
 [92m✓ PASS[0m | All buffers full simultaneously
-  Partial fill: 27/68 (some writebacks may have occurred)
-  Total occupancy: 27/68
+  Partial fill: 37/68 (some writebacks may have occurred)
+  Total occupancy: 37/68
+
+[96m================================================================================[0m
+[1m[96m  PREDICATE MASKING - Config_Type_One[0m[0m
+[96m================================================================================[0m
+
+[92m✓ PASS[0m | All lanes enabled (predicate all 1s)
+  All 32 lanes correctly enabled in stored instruction
+  Enabled lanes: 32/32
+
+[92m✓ PASS[0m | Half lanes enabled (alternating predicate pattern)
+  Alternating predicate pattern correctly preserved (16 lanes enabled)
+  Enabled lanes: 16/32
+
+[92m✓ PASS[0m | All lanes disabled (predicate all 0s)
+  Instruction with all predicates disabled not stored (acceptable behavior)
+
+[92m✓ PASS[0m | Predicate preservation through store and writeback
+  Predicate pattern correctly preserved through writeback (first 16 lanes enabled)
+  Written back to bank_1, enabled lanes: 16/32
 
 [96m================================================================================[0m
 [1m[96m  TEST RESULTS SUMMARY - Config_Type_One[0m[0m
 [96m================================================================================[0m
 
-Total Tests: 10
-[92mPassed: 10[0m
+Total Tests: 14
+[92mPassed: 14[0m
 Failed: 0
 [92mPass Rate: 100.0%[0m
 [92m
@@ -311,11 +349,30 @@ Performance counters exported to: ./test_results/Config_Type_One[0m
   Total occupancy: 1/64
 
 [96m================================================================================[0m
+[1m[96m  PREDICATE MASKING - Config_Type_Two[0m[0m
+[96m================================================================================[0m
+
+[92m✓ PASS[0m | All lanes enabled (predicate all 1s)
+  All 32 lanes correctly enabled in stored instruction
+  Enabled lanes: 32/32
+
+[92m✓ PASS[0m | Half lanes enabled (alternating predicate pattern)
+  Alternating predicate pattern correctly preserved (16 lanes enabled)
+  Enabled lanes: 16/32
+
+[92m✓ PASS[0m | All lanes disabled (predicate all 0s)
+  Instruction with all predicates disabled not stored (acceptable behavior)
+
+[92m✓ PASS[0m | Predicate preservation through store and writeback
+  Predicate pattern correctly preserved through writeback (first 16 lanes enabled)
+  Written back to bank_1, enabled lanes: 16/32
+
+[96m================================================================================[0m
 [1m[96m  TEST RESULTS SUMMARY - Config_Type_Two[0m[0m
 [96m================================================================================[0m
 
-Total Tests: 10
-[92mPassed: 10[0m
+Total Tests: 14
+[92mPassed: 14[0m
 Failed: 0
 [92mPass Rate: 100.0%[0m
 [92m
@@ -326,20 +383,20 @@ Performance counters exported to: ./test_results/Config_Type_Two[0m
 [96m================================================================================[0m
 
 Config_Default:
-  Passed: 10/10
+  Passed: 14/14
 [92m  Pass Rate: 100.0%[0m
 
 Config_Type_One:
-  Passed: 10/10
+  Passed: 14/14
 [92m  Pass Rate: 100.0%[0m
 
 Config_Type_Two:
-  Passed: 10/10
+  Passed: 14/14
 [92m  Pass Rate: 100.0%[0m
 
 [1mOVERALL RESULTS:[0m
-Total Tests Run: [1m30[0m
-[92mTests Passed: 30[0m
+Total Tests Run: [1m42[0m
+[92mTests Passed: 42[0m
 Tests Failed: 0
 [92m[1mOverall Pass Rate: 100.0%[0m[0m
 [92m[1m

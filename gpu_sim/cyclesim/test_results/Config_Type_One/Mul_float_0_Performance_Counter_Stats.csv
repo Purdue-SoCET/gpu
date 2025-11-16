@@ -1,2 +1,2 @@
-name,total_cycles,stall_cycles,buffer_full_cycles,store_cycles,writeback_cycles,average_buffer_occupancy,average_instruction_buffer_age,percentile_10_buffer_occupancy,percentile_1_buffer_occupancy
-Mul_float_0_Performance_Counter,109,0,0,6,0,1.2935779816513762,16.27659574468085,0.0,0.0
+name,total_cycles,stall_cycles,buffer_full_cycles,store_cycles,writeback_cycles,average_buffer_occupancy,average_instruction_age,percentile_90_buffer_occupancy,percentile_99_buffer_occupancy
+Mul_float_0_Performance_Counter,364,0,0,8,0,5.175824175824176,134.6544585987261,7.0,7.0
