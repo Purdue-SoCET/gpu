@@ -69,7 +69,7 @@ def emulator(input_file, mem):
     for warp_id in range(32): #execute one warp at a time
         warp = threadblock[warp_id]
         pred_reg_file = thread_pred_RFs[warp_id]
-        print(warp)
+        print(warp_id)
         halt = False    
         while(halt is False and warp.pc.int < 29 * 4): #while one warp has not halted or past instr mem
             pc = warp.pc.int
