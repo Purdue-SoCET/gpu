@@ -4,6 +4,8 @@ from regfile import RegisterFile
 from typing import Any, Optional, Callable, List, Deque, Tuple
 from collections import deque
 
+fust: dict = {"ADD": 0, "SUB": 0, "MUL": 0, "DIV": 0, "SQRT": 0, "LDST": 0}
+
 class IssueStage(Stage):
     # configuration
     # num_iBuffer = 16
@@ -23,8 +25,23 @@ class IssueStage(Stage):
 
     # def __post_init__(self):
     # def __init__(self, register_file: RegisterFile, fust_latency_cycles: int = 1, stage_name: str = "Issue"):
-    def __init__(self, fust_latency_cycles: int = 1, stage_name: str = "Issue"):
-        super().__init__(name=stage_name)
+    # def __init__(self, fust_latency_cycles: int = 1, stage_name: str = "Issue"):
+    def __init__(
+        self, 
+        fust_latency_cycles: int = 1,
+        name: str = "IssueStage",
+        behind_latch=None,
+        ahead_latch=None,
+        forward_ifs_read=None,
+        forward_ifs_write=None
+    ):
+        super().__init__(
+            name=name,
+            behind_latch=behind_latch,
+            ahead_latch=ahead_latch,
+            forward_ifs_read=forward_ifs_read or {},
+            forward_ifs_write=forward_ifs_write or {},
+        )
         """
         evenRF_fn/oddRF_fn: optional callables with signature (RS, RD, 'R'/'W') -> value
                             If not given, lightweight internal stub RFs are used (read-only for now).
@@ -32,6 +49,7 @@ class IssueStage(Stage):
         """
         # super().__init__(name=name)
         self.fust_latency_cycles: int = max(1, int(fust_latency_cycles))
+        self.dispatched: List[Instruction] = []
 
         self.num_iBuffer = 16
         self.num_entries = 4
@@ -39,8 +57,9 @@ class IssueStage(Stage):
         self.iBuffer: List[List[Optional[Instruction]]] = [
             [None for _ in range(self.num_entries)] for _ in range(self.num_iBuffer)
         ]
-        self.iBufferFill: List[int] = [0 for _ in range(self.num_iBuffer)]
+        self.iBufferCapacity: List[int] = [0 for _ in range(self.num_iBuffer)]
         self.iBufferHead: List[int] = [0 for _ in range(self.num_iBuffer)]
+        self.iBuff_Full_Flags: List[int] = [0 for _ in range(self.num_iBuffer)]
         self.curr_wg: int = 0  # RR pointer for iBuffer scans
 
         # --- Per-bank (EVEN/ODD) staging for operand reads ---
@@ -50,8 +69,9 @@ class IssueStage(Stage):
         self.odd_read_progress: int = 0
 
         # --- Queues of instructions that finished both RF reads and can be dispatched ---
-        self.ready_even: Deque[Instruction] = deque()
-        self.ready_odd: Deque[Instruction] = deque()
+        self.ready_to_dispatch: Deque[Instruction] = deque()
+        # self.ready_even: Deque[Instruction] = deque()
+        # self.ready_odd: Deque[Instruction] = deque()
 
         # --- FUST: per-warpGroup availability (simple model) ---
         # countdown == 0 means free; >0 means busy that many more cycles.
@@ -83,27 +103,41 @@ class IssueStage(Stage):
                                (order: EVEN-first if both dispatched).
         """
         inst_in: Optional[Instruction] = None
+        # dispatched_inst: Optional[Instruction] = None
+        FU_stall_issue: bool = False
         # if input_data is not None and getattr(input_data, "instruction", None) is not None:
         if input_data is not None:
             inst_in = input_data
+            self.curr_wg = inst_in.warp_group_id
 
-        # Housekeeping for FUST (advance time)
-        self._tick_fust()
+        # 1) Check FUST & Dispatch
+        # dispatched_inst, FU_stall_issue = self._dispatch_ready_via_fust()
+        FU_stall_issue = self._dispatch_ready_via_fust()
+        
+        # n = 1
+        # if len(self.dispatched) < n or cycle > 6:
+        # if dispatched_inst == None and fust[dispatched_inst.intended_FU]: 
+        if FU_stall_issue == False:
+        
+            # 2) RF reads for instructions in register/staged
+            self._issue_register_file_reads()
 
-        # 1) Dispatch through FUST (EVEN priority)
-        dispatched = self._dispatch_ready_via_fust()
+            # 3) Pop from iBuffer to hold in front of RF for read
+            self._stage_from_ibuffer_for_next_cycle()
 
-        # 2) RF reads for staged instructions with the requested rhythm
-        self._issue_register_file_reads()
-
-        # 3) Stage next instructions (from iBuffer) for RF reads in upcoming cycles
-        self._stage_from_ibuffer_for_next_cycle()
-
-        # 4) Finally, fill iBuffer with the just-decoded instruction (if present)
+        # 4) Fill iBuffer with the just decoded instruction 
         if inst_in is not None:
             self.fill_ibuffer(inst_in)
 
-        return dispatched
+        # 5) Create the ibuffer capacity flag bit vector for WS 
+        for i in range(len(self.iBufferCapacity)):
+            self.iBuff_Full_Flags[i] = 0
+            if self.iBufferCapacity[i] >= self.num_entries - 1:
+                self.iBuff_Full_Flags[i] = 1
+
+        self.forward_signals(Issue_forward_to_WS.name, self.iBuff_Full_Flags)
+
+        return self.dispatched
 
     # --------------------------------
     # (1) FUST dispatch (EVEN first)
@@ -113,32 +147,35 @@ class IssueStage(Stage):
         Try to dispatch up to two instructions (EVEN then ODD) if their warpGroup's
         FUST slot is free. An instruction is ready if both operands were read.
         """
-        dispatched: List[Instruction] = []
+        # dispatched: List[Instruction] = []
+        FU_stall: bool = False
 
         # Helper: attempt a single dispatch from a queue
         def try_dispatch_one(q: Deque[Instruction]) -> Optional[Instruction]:
             if not q:
-                return None
+                return None, False
             inst = q[0]  # peek
-            wg = inst.warp_group_id
-            if self.fust_busy_countdown[wg] == 0:
+            # wg = inst.warp_group_id
+            # if self.fust_busy_countdown[wg] == 0:
                 # Reserve FUST for this warpGroup
-                self.fust_busy_countdown[wg] = self.fust_latency_cycles
-                q.popleft()
-                return inst
-            return None
+            # self.fust_busy_countdown[wg] = self.fust_latency_cycles
+            if fust[inst.intended_FU]:
+                return None, True
+            q.popleft()
+            return inst, False
 
         # EVEN gets priority
-        first = try_dispatch_one(self.ready_even)
-        if first is not None:
-            dispatched.append(first)
+        instr, FU_stall = try_dispatch_one(self.ready_to_dispatch)
+        if instr is not None:
+            self.dispatched.append(instr)
 
         # Then ODD
-        second = try_dispatch_one(self.ready_odd)
-        if second is not None:
-            dispatched.append(second)
+        # second = try_dispatch_one(self.ready_odd)
+        # if second is not None:
+        #     self.dispatched.append(second)
 
-        return dispatched
+        # return self.dispatched
+        return FU_stall
 
     # -------------------------------------------------------
     # (2) Issue reads to RFs with the described oscillation
@@ -193,10 +230,11 @@ class IssueStage(Stage):
 
     def _push_ready(self, inst: "Instruction") -> None:
         """Place a fully-read instruction into the EVEN/ODD ready queue by warp parity."""
-        if (inst.warp_id % 2) == 0:
-            self.ready_even.append(inst)
-        else:
-            self.ready_odd.append(inst)
+        # if (inst.warp_id % 2) == 0:
+        #     self.ready_even.append(inst)
+        # else:
+        #     self.ready_odd.append(inst)
+        self.ready_to_dispatch.append(inst)
 
     # -----------------------------------------------------------
     # (3) Select from iBuffer to stage next EVEN/ODD instructions
@@ -224,25 +262,23 @@ class IssueStage(Stage):
 
     def _pop_from_ibuffer_matching(self, pred) -> Optional["Instruction"]:
         """
-        Round-robin scan of warpGroups, return and remove the head instruction
-        only if it satisfies 'pred'. Advances RR pointer on a pop.
+        Issue logic follows the warp group being serviced by the warp scheduler.
         """
-        for step in range(self.num_iBuffer):
-            wg = (self.curr_wg + step) % self.num_iBuffer
-            if self.iBufferFill[wg] == 0:
-                continue
-            head_idx = self.iBufferHead[wg]
-            inst = self.iBuffer[wg][head_idx]
-            if inst is None:
-                continue
-            if pred(inst):
-                # Pop from FIFO
-                self.iBuffer[wg][head_idx] = None
-                self.iBufferHead[wg] = (head_idx + 1) % self.num_entries
-                self.iBufferFill[wg] -= 1
-                # Advance RR starting point
-                self.curr_wg = (wg + 1) % self.num_iBuffer
-                return inst
+        # for step in range(self.num_iBuffer):
+            # wg = (self.curr_wg + step) % self.num_iBuffer
+        wg = self.curr_wg
+        if self.iBufferCapacity[wg] == 0:
+            return None
+        head_idx = self.iBufferHead[wg]
+        inst = self.iBuffer[wg][head_idx]
+        if inst is None:
+            return None
+        if pred(inst):
+            # Pop from FIFO
+            self.iBuffer[wg][head_idx] = None
+            self.iBufferHead[wg] = (head_idx + 1) % self.num_entries
+            self.iBufferCapacity[wg] -= 1
+            return inst
         return None
 
     # ------------------------
@@ -250,12 +286,13 @@ class IssueStage(Stage):
     # ------------------------
     def fill_ibuffer(self, inst: "Instruction") -> None:
         given = inst.warp_group_id
-        if self.iBufferFill[given] < self.num_entries:
+        if self.iBufferCapacity[given] <= self.num_entries - 1:
             head = self.iBufferHead[given]
-            tail = (head + self.iBufferFill[given]) % self.num_entries
+            tail = (head + self.iBufferCapacity[given]) % self.num_entries
             self.iBuffer[given][tail] = inst
-            self.iBufferFill[given] += 1
+            self.iBufferCapacity[given] += 1
         # else: upstream should stall/retry
+
 
     # -----------------------------------------
     # Original helper kept for compatibility
@@ -268,7 +305,7 @@ class IssueStage(Stage):
         """
         for step in range(self.num_iBuffer):
             wg = (curr_wg + step) % self.num_iBuffer
-            if self.iBufferFill[wg] > 0:
+            if self.iBufferCapacity[wg] > 0:
                 head_idx = self.iBufferHead[wg]
                 return self.iBuffer[wg][head_idx], wg
         return None, curr_wg
@@ -321,6 +358,8 @@ class IssueStage(Stage):
     #     threads_per_warp = 2
     # )
 
+Issue_forward_to_WS = ForwardingIF(name = "ForwardIssueToWS")
+
 regfile = RegisterFile(
     banks = 2,
     warps = 4,
@@ -330,7 +369,11 @@ regfile = RegisterFile(
 
 issue_stage = IssueStage(
     fust_latency_cycles = 1,
-    stage_name = "IssueStage"
+    name = "IssueStage",
+    behind_latch = None,
+    ahead_latch = None,
+    forward_ifs_read = None,
+    forward_ifs_write = {Issue_forward_to_WS.name: Issue_forward_to_WS}
 )
 
 regfile.write_warp_gran(0, 0, [2, 3])
@@ -384,8 +427,8 @@ instr1 = Instruction(
 instr2 = Instruction(
     pc = 0x4,
     intended_FU = "MUL",
-    warp_id = 2,
-    warp_group_id = 1,
+    warp_id = 0,
+    warp_group_id = 0,
     rs1 = 0,
     rs2 = 1,
     rd = 2,
@@ -398,8 +441,8 @@ instr2 = Instruction(
 instr3 = Instruction(
     pc = 0x4,
     intended_FU = "MUL",
-    warp_id = 3,
-    warp_group_id = 1,
+    warp_id = 1,
+    warp_group_id = 0,
     rs1 = 0,
     rs2 = 1,
     rd = 2,
@@ -409,15 +452,101 @@ instr3 = Instruction(
     wdat = 0
 )
 
-instructions = [instr0, instr1, instr2, instr3]
+instr4 = Instruction(
+    pc = 0x8,
+    intended_FU = "DIV",
+    warp_id = 0,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1111111",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
 
-for cycle in range(10):
-    if cycle in range(4):
+instr5 = Instruction(
+    pc = 0x8,
+    intended_FU = "DIV",
+    warp_id = 1,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1111111",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
+
+instr6 = Instruction(
+    pc = 0xC,
+    intended_FU = "SQRT",
+    warp_id = 0,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1010101",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
+
+instr7 = Instruction(
+    pc = 0xC,
+    intended_FU = "SQRT",
+    warp_id = 1,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1010101",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
+
+instr8 = Instruction(
+    pc = 0x10,
+    intended_FU = "SUB",
+    warp_id = 0,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1110111",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
+
+instr9 = Instruction(
+    pc = 0x10,
+    intended_FU = "SUB",
+    warp_id = 1,
+    warp_group_id = 0,
+    rs1 = 0,
+    rs2 = 1,
+    rd = 2,
+    opcode = "1110111",
+    rdat1 = 0,
+    rdat2 = 0,
+    wdat = 0
+)
+
+instructions = [instr0, instr1, instr2, instr3, instr4, instr5, instr6, instr7, instr8, instr9]
+
+for cycle in range(20):
+    if cycle == 0:
+        fust["ADD"] = 1 # busy
+    elif cycle == 7:
+        fust["ADD"] = 0 # free
+    if cycle in range(len(instructions)):
         issue_stage.compute(instructions[cycle])
     else:
         issue_stage.compute(None)
 
-print(instr0.rdat1, instr0.rdat2)
-print(instr1.rdat1, instr1.rdat2)
-print(instr2.rdat1, instr2.rdat2)
-print(instr3.rdat1, instr3.rdat2)
+for i in range(len(instructions)):
+    print(instructions[i].rdat1, instructions[i].rdat2)
