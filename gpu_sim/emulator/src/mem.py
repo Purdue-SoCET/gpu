@@ -62,9 +62,12 @@ class Mem:
     def read(self, addr: int, bytes: int) -> int:
         val = 0
 
-        for i in range(bytes):
-            b = self.memory[addr + 1] & 0xFF
+        for i in range(bytes): #reads LSB first
+            b = self.memory[addr + i] & 0xFF #endianness
             val |= b << (8 * i)
+            # print(f"byte_{i}={bin(b)} at mem_addr={addr + i}")
+            
+        # print(f"word={hex(val)} at mem_addr={addr}")
         return val
 
     def write(self, addr: Bits, data: Bits, bytes_t: int) -> None:
