@@ -102,10 +102,12 @@ class ICacheStage(Stage):
         if "ICache_Decode_Ihit" in self.forward_ifs_write:
             self.forward_ifs_write["ICache_Decode_Ihit"].push(val)
         
-        if val == False:
-            ihit_forwarding_if = self.forward_ifs_write["ihit"]      
+        ihit_forwarding_if = self.forward_ifs_write["ihit"] 
+        if val == False:     
             ihit_forwarding_if.set_wait(True)
-
+        else:
+            ihit_forwarding_if.set_wait(False)
+            
     def _addr_decode(self, pc):
         block = pc // self.block_size
         set_idx = block % self.num_sets
@@ -162,6 +164,7 @@ class ICacheStage(Stage):
             # self.mshrs = [m for m in self.mshrs if m["block_addr"] != block]
 
             # UNBLOCK
+            self._send_ihit(True)
             self.stalled = False
             print("UNSTALLED AFTER A FILL!")
             # retry the stalled instruction next cycle
@@ -194,7 +197,7 @@ class ICacheStage(Stage):
         if hit_line:
             self.behind_latch.pop()  # consume
             print(f"[ICache] HIT pc=0x{pc:X}")
-
+            self._send_ihit(True)
             if self.ahead_latch.ready_for_push():
                 self.ahead_latch.push({
                     "pc": pc,
@@ -208,6 +211,7 @@ class ICacheStage(Stage):
         print(f"[ICache] MISS pc=0x{pc:X} → stall + memreq")
 
         # block pipeline here
+        self._send_ihit(False)
         self.stalled = True
         self.pending_fetch = req  # save request for retry
         self.behind_latch.pop()
@@ -215,15 +219,6 @@ class ICacheStage(Stage):
         # issue memory request only once
         set_idx,tag,block = self._addr_decode(pc)
 
-        # if self._mshr_for_block(block) is None:
-        #     # create proper MSHR entry
-        #     self.mshrs.append({
-        #         "block_addr": block,
-        #         "pc": pc,
-        #         "tag": tag,
-        #         "set": set_idx,
-        #         "outstanding": True,
-        #     })
 
         self.mem_req_if.push({
                 "addr": block,

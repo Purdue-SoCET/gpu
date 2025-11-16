@@ -2,13 +2,15 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from collections import deque
 from bitstring import Bits 
+from enum import Enum
 
 @dataclass
 class DecodeType:
-    halt: bool = False
-    EOP: bool = False
-    MOP: bool = False
-    Barrier: bool = False
+    halt: int = 0
+    EOP: int = 1
+    MOP: int = 2
+    Barrier: int = 3
+
 ###TEST CODE BELOW###
 @dataclass
 class ICacheEntry:
@@ -29,6 +31,7 @@ class MemRequest:
     size: int
     uuid: int
     warp_id: int
+    pc: int 
     remaining: int = 0
 
 @dataclass
@@ -38,6 +41,20 @@ class Warp:
     can_issue: bool = True
     halt: bool = True
 
+class WarpState(Enum):
+    READY = "ready"
+    BARRIER = "barrier"
+    STALL = "stall"
+    HALT = "halt"
+
+@dataclass
+class WarpGroup:
+    pc: int
+    group_id: int
+    last_issue_even: bool = False
+    finished_packet: bool = False
+    in_flight: int = 0
+    state: WarpState = WarpState.READY
 
 @dataclass
 class Instruction:
@@ -52,8 +69,8 @@ class Instruction:
     rs2: Optional[int]
     rd: Optional[int]
     pred: Optional[Any] = None
+    type: Optional[Any] = None
     packet: Optional[Any] = None
-    type: Optional[DecodeType] = None
     issued_cycle: Optional[int] = None
     stage_entry: Dict[str, int] = field(default_factory=dict)   # stage -> first cycle seen
     stage_exit:  Dict[str, int] = field(default_factory=dict)   # stage -> last cycle completed

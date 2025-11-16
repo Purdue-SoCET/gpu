@@ -10,6 +10,7 @@ sys.path.append(str(parent_dir))
 from typing import Any, Dict, List, Optional
 from base import ForwardingIF, LatchIF, Stage, Instruction, ICacheEntry, MemRequest, FetchRequest, DecodeType
 from Memory import Mem
+from units.mem import MemStage
 from bitstring import Bits
 
 
@@ -44,55 +45,6 @@ def run_cycles(stage, behind, ahead, cycles, collect_list=None):
             # Store if requested
             if collect_list is not None:
                 collect_list.append(resp)
-
-
-# ------------------------------------------------------------
-# MemStage Class (unchanged except for single-completion-per-cycle)
-# ------------------------------------------------------------
-class MemStage(Stage):
-    """Memory controller functional unit using Mem() backend."""
-
-    def __init__(self, name, behind_latch, ahead_latch, mem_backend, latency=100):
-        super().__init__(name=name, behind_latch=behind_latch, ahead_latch=ahead_latch)
-        self.mem_backend = mem_backend
-        self.latency = latency
-        self.inflight: list[MemRequest] = []
-
-    def compute(self, input_data=None):
-        print("Inflight count:", len(self.inflight))
-
-        # 1. Try completing ONE inflight request per cycle
-        for req in list(self.inflight):
-            req.remaining -= 1
-
-            if req.remaining <= 0:
-                data = self.mem_backend.read(req.addr, req.size)
-                print("DEBUG: trying to read from Mem backend @", hex(req.addr))
-
-                if self.ahead_latch.ready_for_push():
-                    self.ahead_latch.push({
-                        "uuid": req.uuid,
-                        "data": data,
-                        "warp": req.warp_id
-                    })
-                    print(f"[{self.name}] Completed read @0x{req.addr:X}")
-
-                self.inflight.remove(req)
-                return  # Stop after 1 completion
-
-        # 2. Accept a new request if no completion happened
-        if self.behind_latch and self.behind_latch.valid:
-            req_info = self.behind_latch.pop()
-            mem_req = MemRequest(
-                addr=req_info["addr"],
-                size=req_info.get("size", 4),
-                uuid=req_info.get("uuid", 0),
-                warp_id=req_info.get("warp", 0),
-                remaining=self.latency,
-            )
-            self.inflight.append(mem_req)
-            print(f"[{self.name}] Accepted mem req @0x{mem_req.addr:X} lat={self.latency}")
-
 
 # ------------------------------------------------------------
 # TEST SUITE A — Binary file tests

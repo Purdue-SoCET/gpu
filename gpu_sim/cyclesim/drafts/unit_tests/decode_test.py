@@ -5,7 +5,7 @@ from pathlib import Path
 parent = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent))
 
-from base import LatchIF, ForwardingIF, Instruction
+from base import LatchIF, ForwardingIF, Instruction, DecodeType
 from units.decode import DecodeStage
 from units.pred_reg_file import PredicateRegFile
 from bitstring import Bits
@@ -163,28 +163,87 @@ def test_decode_stage_full():
 
     print(f"[OK] rd={out.rd}, rs1={out.rs1}, rs2={out.rs2} decoded correctly.\n")
 
-    # ========================================================
-    # TEST 4 — Control bits EOP, MOP, Barrier
-    # ========================================================
+    def flush_latches():
+        fetch_dec.clear_all()
+        dec_exec.clear_all()
+        ihit_if.payload = None
+        ihit_if.wait = False
+
     print("----------------------------------------------------")
     print("TEST 4: control bits decode")
     print("----------------------------------------------------")
 
+    # ===========================
+    # Test Barrier
+    # ===========================
+    flush_latches()
+
     inst = Instruction(
         iid=0, pc=0x400, warp=0, warpGroup=0,
         opcode=None, rs1=0, rs2=0, rd=0,
-        packet=encode_inst(0,1,1,1,mop=1,eop=1,barrier=1)
+        packet=encode_inst(0,1,1,1,mop=0,eop=0,barrier=1)
     )
 
-    fetch_dec.push(inst); ihit_if.push(True)
+    fetch_dec.push(inst)
+    ihit_if.push(True)
     out = run_stage(decode, fetch_dec, dec_exec)
+    assert out.type == DecodeType.Barrier
 
-    print(f"  EOP={out.type.EOP}, MOP={out.type.MOP}, Barrier={out.type.Barrier}")
-    assert out.type.EOP
-    assert out.type.MOP
-    assert out.type.Barrier
+
+    # ===========================
+    # Test MOP
+    # ===========================
+    flush_latches()
+
+    inst = Instruction(
+        iid=0, pc=0x400, warp=0, warpGroup=0,
+        opcode=None, rs1=0, rs2=0, rd=0,
+        packet=encode_inst(0,1,1,1,mop=1,eop=0,barrier=0)
+    )
+
+    fetch_dec.push(inst)
+    ihit_if.push(True)
+    out = run_stage(decode, fetch_dec, dec_exec)
+    assert out.type == DecodeType.MOP
+
+
+    # ===========================
+    # Test EOP
+    # ===========================
+    flush_latches()
+
+    inst = Instruction(
+        iid=0, pc=0x400, warp=0, warpGroup=0,
+        opcode=None, rs1=0, rs2=0, rd=0,
+        packet=encode_inst(0,1,1,1,mop=0,eop=1,barrier=0)
+    )
+
+    fetch_dec.push(inst)
+    ihit_if.push(True)
+    out = run_stage(decode, fetch_dec, dec_exec)
+    assert out.type == DecodeType.EOP
+
+
+    # ===========================
+    # Test HALT (opcode7)
+    # ===========================
+    flush_latches()
+
+    halt_raw = 0x7F   # opcode7 = 1111111 → HALT
+
+    inst = Instruction(
+        iid=0, pc=0x400, warp=0, warpGroup=0,
+        opcode=None, rs1=0, rs2=0, rd=0,
+        packet=halt_raw
+    )
+
+    fetch_dec.push(inst)
+    ihit_if.push(True)
+    out = run_stage(decode, fetch_dec, dec_exec)
+    assert out.type == DecodeType.halt
 
     print("[OK] Control bits correctly decoded.\n")
+
 
     # ========================================================
     # TEST 5 — Predicate register read

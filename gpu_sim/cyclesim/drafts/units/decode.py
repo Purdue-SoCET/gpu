@@ -112,14 +112,27 @@ class DecodeStage(Stage):
         inst.rs2 = mid6
         inst.rd  = rd
 
-        decode_flags = DecodeType(
-            halt=(opcode7 == 0b1111111),
-            EOP=bool((raw >> 31) & 0x1),
-            MOP=bool((raw >> 30) & 0x1),
-            Barrier=bool((raw >> 29) & 0x1),
-        )
+        # Default = normal ALU instruction
+        inst.type = None #default until overwritten
+        EOP_bit = (raw >> 31) & 0x1
+        MOP_bit = (raw >> 30) & 0x1
+        Barrier_bit = (raw >> 29) & 0x1
 
-        inst.type = decode_flags
+        if opcode7 == 0b1111111:
+            inst.type = DecodeType.halt
+
+        elif EOP_bit == 1:
+            inst.type = DecodeType.EOP
+
+        elif MOP_bit == 1:
+            inst.type = DecodeType.MOP
+
+        elif Barrier_bit == 1:
+            inst.type = DecodeType.Barrier
+
+        else:
+            inst.type = None  # or normal instruction type if you have one
+
 
         # ---------------------------------------------------------
         # 6) Predicate register file lookup
@@ -138,7 +151,7 @@ class DecodeStage(Stage):
         for name, f in self.forward_ifs_write.items():
             f.push({
                 "decoded": True,
-                "type": decode_flags,
+                "type": inst.type,
                 "pc": inst.pc,
                 "warp": inst.warp
             })

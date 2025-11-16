@@ -14,21 +14,13 @@ from isa_packets import ISA_PACKETS
 from bitstring import Bits 
 
 # Add parent directory to module search path
-
-ICacheMemReqIF = LatchIF(name="ICacheMemReqIF")
-MemICacheRespIF = LatchIF(name="MemICacheRespIF")
-
+# ------------------------------------------------------------
+# MemStage Class (unchanged except for single-completion-per-cycle)
+# ------------------------------------------------------------
 class MemStage(Stage):
     """Memory controller functional unit using Mem() backend."""
 
-    def __init__(
-        self,
-        name: str,
-        behind_latch: Optional[LatchIF],
-        ahead_latch: Optional[LatchIF],
-        mem_backend,                 # <-- existing Mem class instance
-        latency: int = 100,
-    ):
+    def __init__(self, name, behind_latch, ahead_latch, mem_backend, latency=100):
         super().__init__(name=name, behind_latch=behind_latch, ahead_latch=ahead_latch)
         self.mem_backend = mem_backend
         self.latency = latency
@@ -37,11 +29,10 @@ class MemStage(Stage):
     def compute(self, input_data=None):
         print("Inflight count:", len(self.inflight))
 
-        # Find one request that is ready to complete
+        # 1. Try completing ONE inflight request per cycle
         for req in list(self.inflight):
             req.remaining -= 1
 
-            # If this one finishes, issue ONLY one completion and return
             if req.remaining <= 0:
                 data = self.mem_backend.read(req.addr, req.size)
                 print("DEBUG: trying to read from Mem backend @", hex(req.addr))
@@ -50,14 +41,15 @@ class MemStage(Stage):
                     self.ahead_latch.push({
                         "uuid": req.uuid,
                         "data": data,
-                        "warp": req.warp_id
+                        "warp": req.warp_id,
+                        "pc": req.pc
                     })
                     print(f"[{self.name}] Completed read @0x{req.addr:X}")
 
                 self.inflight.remove(req)
-                return  # <<<<< Only complete ONE request this cycle
+                return  # Stop after 1 completion
 
-        # If no completion, try accepting new request
+        # 2. Accept a new request if no completion happened
         if self.behind_latch and self.behind_latch.valid:
             req_info = self.behind_latch.pop()
             mem_req = MemRequest(
@@ -65,10 +57,12 @@ class MemStage(Stage):
                 size=req_info.get("size", 4),
                 uuid=req_info.get("uuid", 0),
                 warp_id=req_info.get("warp", 0),
+                pc=req_info["pc"],
                 remaining=self.latency,
             )
             self.inflight.append(mem_req)
             print(f"[{self.name}] Accepted mem req @0x{mem_req.addr:X} lat={self.latency}")
+
 
 # if __name__ == "__main__":
 #     mem_backend = Mem(start_pc=0x1000, \
