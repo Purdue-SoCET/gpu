@@ -42,23 +42,23 @@ class Instruction:
 class WarpState(Enum):
     READY = "ready"
     BARRIER = "barrier"
-    LONGSTALL = "long stall"
-    SHORTSTALL = "short stall"
+    STALL = "stall"
     HALT = "halt"
 
 @dataclass
-class Warp:
+class WarpGroup:
     pc: int
     group_id: int
+    last_issue_even: bool = False
+    finished_packet: bool = False
     in_flight: int = 0
     state: WarpState = WarpState.READY
-    halt: bool = True
 
 ### FORWARDING WITH DICTIONARIES ###
 
 @dataclass
 class ForwardingIF:
-    payload: Optional[Any] = None
+    payload: Optional[Any]
     wait: bool = False
     name: str = field(default="BackwardIF", repr=False)
 
