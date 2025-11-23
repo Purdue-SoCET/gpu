@@ -70,21 +70,22 @@ def emulator(input_file, mem):
         for warp_id in range(32): #execute one warp at a time
             warp = threadblock[warp_id]
             pred_reg_file = thread_pred_RFs[warp_id]
-            print(f"warp_id={warp_id}")
-            if(~warp.halt_status):
+            if(warp.halt_status is False):
+                assert(threadblock[warp_id].halt_status is False)
+                print(f"warp_id={warp_id}")
                 pc = warp.pc.int
+                
                 instr_bin = fetch(instructions, pc)
-
-                # decode
+                
                 instr = I_Instr_0(op=I_Op_0.ADDI, rd=Bits(uint=0, length=5), rs1=Bits(uint=0, length=5), imm=Bits(int=0, length=12)) #NOP
                 instr = instr.decode(instruction=instr_bin,pc=warp.pc)
-                # pc += 4 # NOTE: temporary until PC incrementing is figured out. How will this change with scheduling?
-                halt = warp.eval(instr=instr, pred_reg_file=pred_reg_file, mem=mem, csr=csrs[warp_id]) #how to pass in mem, when different eval want/don't want it?
-                print(f"pc={warp.pc.int}")
-                if(halt):
+                
+                threadblock[warp_id] = warp.eval(instr=instr, pred_reg_file=pred_reg_file, mem=mem, csr=csrs[warp_id]) #update threadblock warp
+                
+                print(f"Next_pc={warp.pc.int}")
+                if(threadblock[warp_id].halt_status): #this gets updated and hit only after first halt
                     halt_count += 1
                     print(f"halt_count={halt_count}")
-                    print("halted")
                 print()
             # else:
 

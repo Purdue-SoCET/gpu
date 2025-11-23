@@ -144,6 +144,7 @@ class R_Instr_0(Instr):
             # INT Arithmetic Operations
             case R_Op_0.ADD:
                 result = rdat1.int + rdat2.int
+                print(f"{rdat1.int} + {rdat2.int} = {rdat1.int + rdat2.int}")
             
             case R_Op_0.SUB:
                 result = rdat1.int - rdat2.int
@@ -480,37 +481,20 @@ class B_Instr_0(Instr):
         # Evaluate branch condition and write result to predicate register
         match self.op:
             # Comparison Operations (write to predicate register)
-            case B_Op_0.BEQ:
-                # Branch if Equal
-                result = 1 if rdat1.int == rdat2.int else 0
-            
-            case B_Op_0.BNE:
-                # Branch if Not Equal
-                result = 1 if rdat1.int != rdat2.int else 0
-            
-            case B_Op_0.BGE:
-                # Branch if Greater or Equal (signed)
-                result = 1 if rdat1.int >= rdat2.int else 0
-            
-            case B_Op_0.BGEU:
-                # Branch if Greater or Equal (unsigned)
-                result = 1 if rdat1.uint >= rdat2.uint else 0
-            
-            case B_Op_0.BLT:
-                # Branch if Less Than (signed)
-                result = 1 if rdat1.int < rdat2.int else 0
-            
-            case B_Op_0.BLTU:
-                # Branch if Less Than (unsigned)
-                result = 1 if rdat1.uint < rdat2.uint else 0
-            
+            case B_Op_0.BEQ: result = 1 if rdat1.int == rdat2.int else 0
+            case B_Op_0.BNE: result = 1 if rdat1.int != rdat2.int else 0
+            case B_Op_0.BGE: result = 1 if rdat1.int >= rdat2.int else 0
+            case B_Op_0.BGEU: result = 1 if rdat1.uint >= rdat2.uint else 0
+            case B_Op_0.BLT: result = 1 if rdat1.int < rdat2.int else 0
+            case B_Op_0.BLTU: result = 1 if rdat1.uint < rdat2.uint else 0
             case _:
                 raise NotImplementedError(f"B-Type operation {self.op} not implemented yet or doesn't exist.")
 
         # Write to predicate register: PR[local_thread_id] = result
         pred_reg_file.write(global_thread_id, Bits(uint=result, length=1))
         if(result):
-            print(f"Thread{global_thread_id}: branch taken")
+            # print(f"Thread{global_thread_id}: branch taken")
+            pass
         else:
             # print(f"Thread{global_thread_id}: branch not taken")
             pass
