@@ -5,12 +5,22 @@ void kernel_vertexShader(void* arg)
 {
     vertexShader_arg_t* args = (vertexShader_arg_t*) arg;
 
+    #ifdef CPU_SIM
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+    #endif
 
-    if(i > 1023) return;
+    #ifdef GPU_SIM
+    int i = blockIDx_x * blockDim_x + threadIDx_x;
+    #endif
+
+    //int i = blockIDx_x * blockDim_x + threadIDx_x;
+
+    if(1023 < i) return;
+    if(1023 == i) return;
 
     /****** ThreeD Rotation ******/ 
-    // - assuming radians and following V3::RotateThisPointAboutArbitraryAxis and TM::RotateAboutArbitraryAxis
+    // assuming radian
+    // V3::RotateThisPointAboutArbitraryAxis and TM::RotateAboutArbitraryAxis
 
     float lcs[9]; 
     float selAxis[3] = {0.0, 0.0, 0.0};
@@ -40,16 +50,17 @@ void kernel_vertexShader(void* arg)
     // CPU Sim Version
     #ifdef CPU_SIM
     float lcs_dist = sqrt(lcs[0]*lcs[0] + lcs[1]*lcs[1] + lcs[2]*lcs[2]);
+    float inv_lcs_dist = 1/lcs_dist;
     #endif
     // Hardware/Emulator Version (isqrt not sqrt)
-    #ifdef HARDWARE_SIM
+    #ifdef GPU_SIM
     float inv_lcs_dist = isqrt(lcs[0]*lcs[0] + lcs[1]*lcs[1] + lcs[2]*lcs[2]);
-    float lcs_dist = 1 / (inv_lcs_dist);
     #endif
+    //float inv_lcs_dist = isqrt(lcs[0]*lcs[0] + lcs[1]*lcs[1] + lcs[2]*lcs[2]);
 
     for(int j = 0; j < 3; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     lcs[3] = args->a_dist[3*i];
@@ -61,34 +72,46 @@ void kernel_vertexShader(void* arg)
     lcs[8] = lcs[0] * lcs[4] - lcs[1] * lcs[3];
 
     //normalize(lcs[3 to 5])
-    lcs_dist = sqrt(lcs[3]*lcs[3] + lcs[4]*lcs[4] + lcs[5]*lcs[5]);
+    inv_lcs_dist = isqrt(lcs[3]*lcs[3] + lcs[4]*lcs[4] + lcs[5]*lcs[5]);
     for(int j = 3; j < 6; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     //normalize(lcs[6 to 8])
-    lcs_dist = sqrt(lcs[6]*lcs[6] + lcs[7]*lcs[7] + lcs[8]*lcs[8]);
+    inv_lcs_dist = isqrt(lcs[6]*lcs[6] + lcs[7]*lcs[7] + lcs[8]*lcs[8]);
     for(int j = 6; j < 9; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     // vertex normalized to rotation origin
     float p_tempAxis[3] = {
-        (args->threeDVert[3*i]   - args->Oa[3*i]),
+        (args->threeDVert[3*i] - args->Oa[3*i]),
         (args->threeDVert[3*i+1] - args->Oa[3*i+1]),
         (args->threeDVert[3*i+2] - args->Oa[3*i+2])
     };
 
     /*Create Rotation Matrix */
 
-    //Y AXIS M33::MakeRotationMatrix
+    // Y AXIS M33::MakeRotationMatrix
+
+    #ifdef CPU_SIM
     float rotMat[9] = {
         cosf(args->alpha_r[i]), 0, sinf(args->alpha_r[i]),
         0, 1, 0,
         -sinf(args->alpha_r[i]), 0, cosf(args->alpha_r[i])
     };
+    #endif
+
+    #ifdef GPU_SIM
+    float rotMat[9] = {
+        cos(args->alpha_r[i]), 0, sin(args->alpha_r[i]),
+        0, 1, 0,
+        -sin(args->alpha_r[i]), 0, cos(args->alpha_r[i])
+    };
+    #endif
+
 
     /*invert LCS where LCS^-1 = LCS.T*/
     float lcsInv[9];
@@ -142,7 +165,7 @@ void kernel_vertexShader(void* arg)
 
     float q[3] = {0, 0, 0};
 
-    //q = 3Dnorm @ trans^-1
+    // q = 3Dnorm @ trans^-1
     for(int j = 0; j < 3; j++)
     {
         for(int k = 0; k < 3; k++)
@@ -151,11 +174,20 @@ void kernel_vertexShader(void* arg)
         }
     }
 
-    if (q[2] <= 0.0) return;
+    if (q[2] < 0.0) return;
+    if (q[2] == 0.0) return;
 
     args->twoDVert[3*i]   = q[0] / q[2];
     args->twoDVert[3*i+1] = q[1] / q[2];
-    args->twoDVert[3*i+2] = 1.0 / q[2];
+
+    #ifdef CPU_SIM
+    args->twoDVert[3*i+2] = 1.0f / q[2];
+    #endif
+    
+    #ifdef GPU_SIM
+    args->twoDVert[3*i+2] = itof(1) / q[2];
+    #endif
+    //args->twoDVert[3*i+2] = itof(1) / q[2];
 
     return;
 }
