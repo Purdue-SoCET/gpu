@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Tuple
 from collections import deque
-from dcache_wip import LockupFreeCacheStage
+from dcache import LockupFreeCacheStage
 from base import ForwardingIF, LatchIF, Stage, Addr, Instruction, MemRequest, dCacheFrame, MSHREntry
 from mem import MemStage, Mem
 
