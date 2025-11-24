@@ -7,8 +7,9 @@ from typing import Optional, List, Dict, Any, Tuple
 from collections import deque
 from dcache_wip import LockupFreeCacheStage
 from base import ForwardingIF, LatchIF, Stage, Addr, Instruction, MemRequest, dCacheFrame, MSHREntry
-from dcache_wip import LockupFreeCacheStage
 from mem import MemStage, Mem
+
+BLOCK_SIZE_WORDS = 32
 
 # Cache to memory interface
 dCacheMemReqIF = LatchIF(name="dCacheMemReqIF")
@@ -93,6 +94,8 @@ def run_sim (start, cycles):
             elif (msg_type == 'MISS_COMPLETE'):
                 uuid = response.get('uuid')
                 print(f"[Cycle {cycle}] LSU Received: MISS COMPLETE (UUID: {uuid}) - Data is in cache")
+            elif (msg_type == 'HIT_STALL'):
+                print(f"[Cycle {cycle}] LSU Received: HIT STALL")
         print_latch_states(all_interfaces, cycle, "after")
     print(f"=== Test ended ===")
     return (cycles)
@@ -109,20 +112,182 @@ if __name__ == "__main__":
         all_interfaces = sim["latches"]
         all_interfaces["DCache_LSU_Resp"] = sim["forward_if"]
         lsu_latch = sim["latches"]["LSU_dCache"]
+
+        # Miss on 0x1000 (R)
         test_request = {
-            "addr": 0x1000,
-            "rw": "read",
+            "addr_val": 0x1000,
+            "rw_mode": "write",
+            "store_value": 0xDEADBEEF,
             "id": 1
         }
-        LSU_dCache_IF.push(test_request)
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 25)
+        total_cycles += 25
+        
+        
+        # Hit on 0x1000 (R)
+        test_request = {
+            "addr_val": 0x1000,
+            "rw_mode": "read",
+            "id": 2
+        }
+        lsu_latch.push(test_request)
+
+        run_sim(total_cycles, 3)
+        total_cycles += 3
+
+        
+        # Miss on 0x1080 (W)
+        test_request = {
+            "addr_val": 0x1080,
+            "rw_mode": "write",
+            "store_value": 0xDEADBEEF,
+            "id": 3
+        }
+        lsu_latch.push(test_request)
         run_sim(total_cycles, 25)
         total_cycles += 25
 
+
+        # Miss followed by a hit
         test_request = {
-            "addr": 0x1000,
-            "rw": "read",
-            "id": 2
+            "addr_val": 0x1100,
+            "rw_mode": "read",
+            "id": 4
         }
-        LSU_dCache_IF.push(test_request)
-        run_sim(total_cycles, 3)
-        total_cycles += 3
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+
+        test_request = {
+            "addr_val": 0x1080,
+            "rw_mode": "read",
+            "id": 5
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 25)
+        total_cycles += 25
+        # Successfully returned a hit while processing the miss
+
+
+        # Victim Eject
+        test_request = {
+            "addr_val": 0x2000,
+            "rw_mode": "read",
+            "id": 6
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+
+        test_request = {
+            "addr_val": 0x3000,
+            "rw_mode": "read",
+            "id": 7
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 33)
+        total_cycles += 33
+
+        test_request = {
+            "addr_val": 0x4000,
+            "rw_mode": "read",
+            "id": 8
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+
+        test_request = {
+            "addr_val": 0x5000,
+            "rw_mode": "read",
+            "id": 9
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+
+        test_request = {
+            "addr_val": 0x6000,
+            "rw_mode": "read",
+            "id": 9
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+        
+        test_request = {
+            "addr_val": 0x7000,
+            "rw_mode": "read",
+            "id": 10
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 1)
+        total_cycles += 1
+
+        test_request = {
+            "addr_val": 0x8000,
+            "rw_mode": "read",
+            "id": 11
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 55)
+        total_cycles += 55
+
+        # EVICTING BANK 0, WAY 7
+        test_request = {
+            "addr_val": 0x9000,
+            "rw_mode": "read",
+            "id": 12
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 33)
+        total_cycles += 33
+        # Checked that memsim.hex contains the dirty values
+
+        # Halt
+        test_request = {
+            "addr_val": 0x9000,
+            "rw_mode": "read",
+            "id": 13,
+            "halt": True
+        }
+        lsu_latch.push(test_request)
+        run_sim(total_cycles, 11)
+        total_cycles += 11
+        # Successfully flushed and wrote dirty data back to memsim.hex
+
+
+        for bank_id, bank in enumerate(dCache.banks):
+            print(f"\n======== Bank {bank_id} ========")
+            found_valid_line = False
+
+            for set_id, cache_set in enumerate(bank.sets):
+                # Check if the set has any valid lines
+                set_has_valid_lines = any(frame.valid for frame in cache_set)
+
+                if set_has_valid_lines:
+                    found_valid_line = True
+                    print(f"  ---- Set {set_id} ----")
+
+                    # Print LRU order (Most Recently Used -> Least Recently Used)
+                    lru_list = bank.lru[set_id]
+                    print(f"    LRU Order: {lru_list} (Front=MRU, Back=LRU)")
+
+                    for way_id, frame in enumerate(cache_set):
+                        if frame.valid:
+                            tag_hex = f"0x{frame.tag:X}"
+                            dirty_str = "D" if frame.dirty else " "
+
+                            print(f"    [Way {way_id}] V:1 {dirty_str} Tag: {tag_hex:<8}")
+
+                            # Print data in rows of 4 words
+                            for i in range(0, BLOCK_SIZE_WORDS, 4):
+                                w0 = f"0x{frame.block[i]:08X}"
+                                w1 = f"0x{frame.block[i+1]:08X}"
+                                w2 = f"0x{frame.block[i+2]:08X}"
+                                w3 = f"0x{frame.block[i+3]:08X}"
+                                print(f"        Block[{i:02d}:{i+3:02d}]: {w0} {w1} {w2} {w3}")
+
+            if not found_valid_line:
+                print(f"  (Bank is empty)")
