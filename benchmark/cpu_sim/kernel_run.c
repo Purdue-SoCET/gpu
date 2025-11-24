@@ -25,6 +25,7 @@ void createPPMFile(char* fileName, int* pixels){
     FILE* file = fopen(fileName, "w");
 
     if (!file) {
+        printf("Could not open file %s\n", fileName);
         perror("fopen");
         return;
     }

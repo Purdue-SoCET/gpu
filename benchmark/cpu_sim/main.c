@@ -58,7 +58,7 @@ uint8_t* memory_ptr;
 
 
 int main(int argc, char** argv) {
-    int frame = 999;
+    int frame = 0;
     // for (int frame = 0; frame < 300; frame++)
     {
     uint8_t* memory_base = (uint8_t*) malloc(MEMORY_SIZE - STACK_SIZE - TEXT_SIZE);
@@ -260,9 +260,7 @@ int main(int argc, char** argv) {
 
         // Running the Kernel
         int grid_dim = 1; int block_dim = (u_max-u_min)*(v_max-v_min);
-        printf("%d: tbuff[3130] = %d\n", tri, tbuff[3130]);
         run_kernel(kernel_triangle, grid_dim, block_dim, (void*)triangle_args);
-        printf("\ttbuff[3130] = %d\n", tri, tbuff[3130]);
     }
 
     // Checking TRIANGLE Output
@@ -350,8 +348,8 @@ int main(int argc, char** argv) {
         // }
     }
 
-    char fname[25];
-    snprintf(fname, sizeof(fname), "output/frame_%03d.ppm", frame);
+    char fname[30];
+    snprintf(fname, sizeof(fname), "build/output/frame_%03d.ppm", frame);
 
     createPPMFile(fname, int_color_output);
     free(int_color_output);
