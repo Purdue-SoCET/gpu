@@ -48,7 +48,7 @@ class MemStage(Stage):
                             self.ahead_latch.push({
                                 "uuid": None,
                                 "data": "WRITE_DONE",
-                                "warp": None
+                                "warp": req.warp_id
                             })
                             completed.append(req)
 
@@ -80,7 +80,7 @@ class MemStage(Stage):
                 rw_mode = req_info.get("rw_mode", "read")
             )
             self.inflight.append(mem_req)
-            print(f"[{self.name}] Accepted mem req @0x{mem_req.addr:X} lat={self.latency}")
+            print(f"[{self.name}] Accepted mem req @0x{mem_req.addr:X} lat={self.latency} for bank {mem_req.warp_id}")
 
 
 # Memory.py — Fully Patched for ICache + MemStage correctness
