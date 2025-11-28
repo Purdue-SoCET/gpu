@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+from regfile import RegisterFile
+
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
@@ -41,7 +43,9 @@ class IssueStage(Stage):
         behind_latch=None,
         ahead_latch=None,
         forward_ifs_read=None,
-        forward_ifs_write=None
+        forward_ifs_write=None,
+        regfile: Optional[RegisterFile] = None,
+        num_groups: int = 16,
     ):
         super().__init__(
             name=name,
@@ -56,10 +60,11 @@ class IssueStage(Stage):
         fust_latency_cycles: how long a FUST slot stays busy after a dispatch (>=1).
         """
         # super().__init__(name=name)
+        self.regfile = regfile
         self.fust_latency_cycles: int = max(1, int(fust_latency_cycles))
         self.dispatched: List[Instruction] = []
 
-        self.num_iBuffer = 16
+        self.num_iBuffer = num_groups
         self.num_entries = 4
         # --- iBuffer: 16 warpGroups × 4-deep FIFO each ---
         self.iBuffer: List[List[Optional[Instruction]]] = [
@@ -116,7 +121,7 @@ class IssueStage(Stage):
         # if input_data is not None and getattr(input_data, "instruction", None) is not None:
         if input_data is not None:
             inst_in = input_data
-            self.curr_wg = inst_in.warp_group_id
+            self.curr_wg = inst_in.warpGroup
 
         # 1) Check FUST & Dispatch
         # dispatched_inst, FU_stall_issue = self._dispatch_ready_via_fust()
@@ -124,7 +129,7 @@ class IssueStage(Stage):
         
         # n = 1
         # if len(self.dispatched) < n or cycle > 6:
-        # if dispatched_inst == None and fust[dispatched_inst.intended_FU]: 
+        # if dispatched_inst == None and fust[dispatched_inst.intended_FSU]: 
         if FU_stall_issue == False:
         
             # 2) RF reads for instructions in register/staged
@@ -143,7 +148,7 @@ class IssueStage(Stage):
             if self.iBufferCapacity[i] >= self.num_entries - 1:
                 self.iBuff_Full_Flags[i] = 1
 
-        self.forward_signals(Issue_forward_to_WS.name, self.iBuff_Full_Flags)
+        self.forward_signals("Issue_Scheduler", self.iBuff_Full_Flags)
 
         return self.dispatched
 
@@ -167,7 +172,7 @@ class IssueStage(Stage):
             # if self.fust_busy_countdown[wg] == 0:
                 # Reserve FUST for this warpGroup
             # self.fust_busy_countdown[wg] = self.fust_latency_cycles
-            if fust[inst.intended_FU]:
+            if fust[inst.intended_FSU]:
                 return None, True
             q.popleft()
             return inst, False
@@ -206,12 +211,12 @@ class IssueStage(Stage):
         if self.staged_even is not None and self.even_read_progress < 2:
             if self.even_read_progress == 0:
                 # val = self.evenRF(self.staged_even.rs1, None, 'R')
-                val = regfile.read_warp_gran(self.staged_even.warp_id, self.staged_even.rs1)
+                val = self.regfile.read_warp_gran(self.staged_even.warp, self.staged_even.rs1)
                 self.staged_even.rdat1 = val
                 self.even_read_progress = 1
             elif self.even_read_progress == 1:
                 # val = self.evenRF(self.staged_even.rs2, None, 'R')
-                val = regfile.read_warp_gran(self.staged_even.warp_id, self.staged_even.rs2)
+                val = self.regfile.read_warp_gran(self.staged_even.warp, self.staged_even.rs2)
                 self.staged_even.rdat2 = val
                 self.even_read_progress = 2
                 # Move to ready queue after 2nd operand
@@ -223,12 +228,12 @@ class IssueStage(Stage):
         if self.staged_odd is not None and self.odd_read_progress < 2:
             if self.odd_read_progress == 0:
                 # val = self.oddRF(self.staged_odd.rs1, None, 'R')
-                val = regfile.read_warp_gran(self.staged_odd.warp_id, self.staged_odd.rs1)
+                val = self.regfile.read_warp_gran(self.staged_odd.warp, self.staged_odd.rs1)
                 self.staged_odd.rdat1 = val
                 self.odd_read_progress = 1
             elif self.odd_read_progress == 1:
                 # val = self.oddRF(self.staged_odd.rs2, None, 'R')
-                val = regfile.read_warp_gran(self.staged_odd.warp_id, self.staged_odd.rs2)
+                val = self.regfile.read_warp_gran(self.staged_odd.warp, self.staged_odd.rs2)
                 self.staged_odd.rdat2 = val
                 self.odd_read_progress = 2
                 # Move to ready queue after 2nd operand
@@ -254,7 +259,7 @@ class IssueStage(Stage):
         """
         # Fill EVEN staging slot, if available
         if self.staged_even is None:
-            inst_even = self._pop_from_ibuffer_matching(lambda inst: (inst.warp_id % 2) == 0)
+            inst_even = self._pop_from_ibuffer_matching(lambda inst: (inst.warp % 2) == 0)
             # inst_even = self._pop_from_ibuffer_matching()
             if inst_even is not None:
                 self.staged_even = inst_even
@@ -262,7 +267,7 @@ class IssueStage(Stage):
 
         # Fill ODD staging slot, if available
         if self.staged_odd is None:
-            inst_odd = self._pop_from_ibuffer_matching(lambda inst: (inst.warp_id % 2) == 1)
+            inst_odd = self._pop_from_ibuffer_matching(lambda inst: (inst.warp % 2) == 1)
             # inst_odd = self._pop_from_ibuffer_matching()
             if inst_odd is not None:
                 self.staged_odd = inst_odd
@@ -293,7 +298,7 @@ class IssueStage(Stage):
     # (4) Fill the iBuffer
     # ------------------------
     def fill_ibuffer(self, inst: "Instruction") -> None:
-        given = inst.warp_group_id
+        given = inst.warpGroup
         if self.iBufferCapacity[given] <= self.num_entries - 1:
             head = self.iBufferHead[given]
             tail = (head + self.iBufferCapacity[given]) % self.num_entries
@@ -366,195 +371,196 @@ class IssueStage(Stage):
     #     threads_per_warp = 2
     # )
 
-Issue_forward_to_WS = ForwardingIF(name = "ForwardIssueToWS")
+# Issue_forward_to_WS = ForwardingIF(name = "ForwardIssueToWS")
 
-regfile = RegisterFile(
-    banks = 2,
-    warps = 4,
-    regs_per_warp = 4,
-    threads_per_warp = 2
-)
+# regfile = RegisterFile(
+#     banks = 2,
+#     warps = 4,
+#     regs_per_warp = 4,
+#     threads_per_warp = 2
+# )
 
-issue_stage = IssueStage(
-    fust_latency_cycles = 1,
-    name = "IssueStage",
-    behind_latch = None,
-    ahead_latch = None,
-    forward_ifs_read = None,
-    forward_ifs_write = {Issue_forward_to_WS.name: Issue_forward_to_WS}
-)
+# issue_stage = IssueStage(
+#     fust_latency_cycles = 1,
+#     name = "IssueStage",
+#     behind_latch = None,
+#     ahead_latch = None,
+#     forward_ifs_read = None,
+#     forward_ifs_write = {Issue_forward_to_WS.name: Issue_forward_to_WS}
+# )
 
-regfile.write_warp_gran(0, 0, [2, 3])
-regfile.write_warp_gran(0, 1, [4, 5])
-regfile.write_warp_gran(0, 2, [6, 7])
-regfile.write_warp_gran(0, 3, [8, 9])
+# regfile.write_warp_gran(0, 0, [2, 3])
+# regfile.write_warp_gran(0, 1, [4, 5])
+# regfile.write_warp_gran(0, 2, [6, 7])
+# regfile.write_warp_gran(0, 3, [8, 9])
 
-regfile.write_warp_gran(1, 0, [42, 43])
-regfile.write_warp_gran(1, 1, [44, 45])
-regfile.write_warp_gran(1, 2, [46, 47])
-regfile.write_warp_gran(1, 3, [48, 49])
+# regfile.write_warp_gran(1, 0, [42, 43])
+# regfile.write_warp_gran(1, 1, [44, 45])
+# regfile.write_warp_gran(1, 2, [46, 47])
+# regfile.write_warp_gran(1, 3, [48, 49])
 
-regfile.write_warp_gran(2, 0, [70, 71])
-regfile.write_warp_gran(2, 1, [72, 73])
-regfile.write_warp_gran(2, 2, [74, 75])
-regfile.write_warp_gran(2, 3, [76, 77])
+# regfile.write_warp_gran(2, 0, [70, 71])
+# regfile.write_warp_gran(2, 1, [72, 73])
+# regfile.write_warp_gran(2, 2, [74, 75])
+# regfile.write_warp_gran(2, 3, [76, 77])
 
-regfile.write_warp_gran(3, 0, [900, 901])
-regfile.write_warp_gran(3, 1, [902, 903])
-regfile.write_warp_gran(3, 2, [904, 905])
-regfile.write_warp_gran(3, 3, [906, 907])
+# regfile.write_warp_gran(3, 0, [900, 901])
+# regfile.write_warp_gran(3, 1, [902, 903])
+# regfile.write_warp_gran(3, 2, [904, 905])
+# regfile.write_warp_gran(3, 3, [906, 907])
 
-instr0 = Instruction(
-    pc = 0x0,
-    intended_FU = "ADD",
-    warp_id = 0,
-    warp_group_id = 0,
-    rs1 = 2,
-    rs2 = 3,
-    rd = 1,
-    opcode = "0000000",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr0 = Instruction( iid=None,
 
-instr1 = Instruction(
-    pc = 0x0,
-    intended_FU = "ADD",
-    warp_id = 1,
-    warp_group_id = 0,
-    rs1 = 2,
-    rs2 = 3,
-    rd = 1,
-    opcode = "0000000",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+#     pc = 0x0,
+#     intended_FSU = "ADD",
+#     warp = 0,
+#     warpGroup = 0,
+#     rs1 = 2,
+#     rs2 = 3,
+#     rd = 1,
+#     opcode = "0000000",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr2 = Instruction(
-    pc = 0x4,
-    intended_FU = "MUL",
-    warp_id = 0,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "0000010",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr1 = Instruction( iid=None,
+#     pc = 0x0,
+#     intended_FSU = "ADD",
+#     warp = 1,
+#     warpGroup = 0,
+#     rs1 = 2,
+#     rs2 = 3,
+#     rd = 1,
+#     opcode = "0000000",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr3 = Instruction(
-    pc = 0x4,
-    intended_FU = "MUL",
-    warp_id = 1,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "0000010",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr2 = Instruction( iid=None,
+#     pc = 0x4,
+#     intended_FSU = "MUL",
+#     warp = 0,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "0000010",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr4 = Instruction(
-    pc = 0x8,
-    intended_FU = "DIV",
-    warp_id = 0,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1111111",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr3 = Instruction( iid=None,
+#     pc = 0x4,
+#     intended_FSU = "MUL",
+#     warp = 1,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "0000010",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr5 = Instruction(
-    pc = 0x8,
-    intended_FU = "DIV",
-    warp_id = 1,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1111111",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr4 = Instruction( iid=None,
+#     pc = 0x8,
+#     intended_FSU = "DIV",
+#     warp = 0,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1111111",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr6 = Instruction(
-    pc = 0xC,
-    intended_FU = "SQRT",
-    warp_id = 0,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1010101",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr5 = Instruction( iid=None,
+#     pc = 0x8,
+#     intended_FSU = "DIV",
+#     warp = 1,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1111111",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr7 = Instruction(
-    pc = 0xC,
-    intended_FU = "SQRT",
-    warp_id = 1,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1010101",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr6 = Instruction( iid=None,
+#     pc = 0xC,
+#     intended_FSU = "SQRT",
+#     warp = 0,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1010101",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr8 = Instruction(
-    pc = 0x10,
-    intended_FU = "SUB",
-    warp_id = 0,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1110111",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr7 = Instruction( iid=None,
+#     pc = 0xC,
+#     intended_FSU = "SQRT",
+#     warp = 1,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1010101",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instr9 = Instruction(
-    pc = 0x10,
-    intended_FU = "SUB",
-    warp_id = 1,
-    warp_group_id = 0,
-    rs1 = 0,
-    rs2 = 1,
-    rd = 2,
-    opcode = "1110111",
-    rdat1 = 0,
-    rdat2 = 0,
-    wdat = 0
-)
+# instr8 = Instruction( iid=None,
+#     pc = 0x10,
+#     intended_FSU = "SUB",
+#     warp = 0,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1110111",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-instructions = [instr0, instr1, instr2, instr3, instr4, instr5, instr6, instr7, instr8, instr9]
+# instr9 = Instruction( iid=None,
+#     pc = 0x10,
+#     intended_FSU = "SUB",
+#     warp = 1,
+#     warpGroup = 0,
+#     rs1 = 0,
+#     rs2 = 1,
+#     rd = 2,
+#     opcode = "1110111",
+#     rdat1 = 0,
+#     rdat2 = 0,
+#     wdat = 0
+# )
 
-for cycle in range(20):
-    if cycle == 0:
-        fust["ADD"] = 1 # busy
-    elif cycle == 7:
-        fust["ADD"] = 0 # free
-    if cycle in range(len(instructions)):
-        issue_stage.compute(instructions[cycle])
-    else:
-        issue_stage.compute(None)
+# instructions = [instr0, instr1, instr2, instr3, instr4, instr5, instr6, instr7, instr8, instr9]
 
-for i in range(len(instructions)):
-    print(instructions[i].rdat1, instructions[i].rdat2)
+# for cycle in range(20):
+#     if cycle == 0:
+#         fust["ADD"] = 1 # busy
+#     elif cycle == 7:
+#         fust["ADD"] = 0 # free
+#     if cycle in range(len(instructions)):
+#         issue_stage.compute(instructions[cycle])
+#     else:
+#         issue_stage.compute(None)
+
+# for i in range(len(instructions)):
+#     print(instructions[i].rdat1, instructions[i].rdat2)

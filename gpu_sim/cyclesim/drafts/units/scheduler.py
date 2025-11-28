@@ -69,7 +69,10 @@ class SchedulerStage(Stage):
             self.warp_table[branch_ctrl["warp_group"]].pc = branch_ctrl["dest"]
         
         # check all my things in the issue
-        for ibuffer in range(len(issue_ctrl)):
+        for ibuffer in (range(len(issue_ctrl) - 1)):
+            print("curr req size:", len(issue_ctrl))
+            print(len(self.warp_table))
+            print(ibuffer)
             if self.warp_table[ibuffer].state != WarpState.BARRIER and self.warp_table[ibuffer].state != WarpState.HALT:
                 # i buffer full, stop issuing
                 if issue_ctrl[ibuffer] == 1:

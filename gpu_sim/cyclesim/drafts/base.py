@@ -3,14 +3,11 @@ from typing import Any, Dict, List, Optional
 from collections import deque
 from bitstring import Bits 
 from enum import Enum
-<<<<<<< HEAD
-=======
 from pathlib import Path
 import sys
 parent = Path(__file__).resolve().parent
 sys.path.append(str(parent))
 from custom_enums_multi import Op
->>>>>>> a07c0f4ebdb4d649debb0fb0ebd2f2f4754584d4
 
 @dataclass
 class DecodeType:
@@ -109,10 +106,6 @@ class Instruction:
 
     def mark_writeback(self, cycle: int):
         self.wb_cycle = cycle
-<<<<<<< HEAD
-=======
-
->>>>>>> a07c0f4ebdb4d649debb0fb0ebd2f2f4754584d4
 @dataclass
 class ForwardingIF:
     payload: Optional[Any] = None

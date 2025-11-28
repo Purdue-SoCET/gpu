@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./gpu_sim/cyclesim"
+        "./gpu_sim/cyclesim",
+        "./gpu_sim/common"
     ]
 }
