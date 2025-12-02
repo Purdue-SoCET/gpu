@@ -2,7 +2,7 @@ import enum
 from typing import Optional
 # from gpu_sim.cyclesim.test import ldst
 from src.mem import dcache
-from src.mem.ld_st_payload import Ldst_Dcache_Payload, Dcache_Ldst_Payload
+from gpu_sim.cyclesim.src.mem.dMemPackets import Ldst_Dcache_Payload, Dcache_Ldst_Payload
 from latch_forward_stage import Instruction, ForwardingIF, LatchIF
 import logging
 from bitstring import Bits
