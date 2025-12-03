@@ -68,7 +68,7 @@ class SpecialUnitConfig:
             trig_latency=16,
             inv_sqrt_latency=12
         )
-
+    
 class ArithmeticFunctionalUnit(ABC):
     def __init__(self, subunits: list[FunctionalSubUnit], num: int):
         self.name = f"{self.__class__.__name__}_{num}"
