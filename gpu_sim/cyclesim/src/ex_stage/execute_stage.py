@@ -25,6 +25,18 @@ class FunctionalUnitConfig:
             fp_config=FpUnitConfig.get_default_config(),
             special_config=SpecialUnitConfig.get_default_config()
         )
+    
+    @classmethod
+    def get_config(cls, int_config: IntUnitConfig, fp_config: FpUnitConfig, special_config: SpecialUnitConfig,
+                   int_unit_count: int =1, fp_unit_count: int =1, special_unit_count: int =1) -> FunctionalUnitConfig:
+        return cls(
+            int_unit_count=int_unit_count,
+            fp_unit_count=fp_unit_count,
+            special_unit_count=special_unit_count,
+            int_config=int_config,
+            fp_config=fp_config,
+            special_config=special_config
+        )
 
 class ExecuteStage(Stage):
     def __init__(self, config: FunctionalUnitConfig):
@@ -89,10 +101,8 @@ class ExecuteStage(Stage):
  
 
     @classmethod
-    def create_default_execute_pipeline_stage(cls) -> Stage:
+    def create_pipeline_stage(cls, functional_unit_config: FunctionalUnitConfig) -> ExecuteStage:
         # execute stage
-        functional_unit_config = FunctionalUnitConfig.get_default_config()
-
         ex_stage = ExecuteStage(config=functional_unit_config)
 
         return ex_stage
