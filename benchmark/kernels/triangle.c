@@ -3,8 +3,10 @@
 
 void kernel_triangle(void* arg) {
     triangle_arg_t* args = (triangle_arg_t*) arg;
-    int ix = 0; //mod(threadIdx, args->bb_size[0]);
-    int iy = 0; //mod(threadIdx / args->bb_size[0], args->bb_size[1]);
+    // int ix = mod(threadIdx, args->bb_size[0]);
+    int ix = (((threadIdx)) - (args->bb_size[0])*(((threadIdx))/(args->bb_size[0])));
+    // int iy = mod(threadIdx / args->bb_size[0], args->bb_size[1]);
+    int iy = (((threadIdx) / args->bb_size[0]) - (args->bb_size[1])*(((threadIdx) / args->bb_size[0])/(args->bb_size[1])));
 
     int u = ix + args->bb_start[0];
     int v = iy + args->bb_start[1];

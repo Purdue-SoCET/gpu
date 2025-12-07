@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "include/kernel_run.h"
+#include "include/graphics_lib.h"
 
 // Include all needed kernels
-#include "../kernels/include/graphics_lib.h"
 #include "../kernels/include/vertexShader.h"
 #include "../kernels/include/triangle.h"
 #include "../kernels/include/pixel.h"
@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
         printf(" --- Post Triangle Tags --- \n");
         printf("\t[");
         for(int i = 0; i < frame_w * frame_h; i++) {
-            if(tbuff[i]+1 > 50)
+            if(tbuff[i]+1 > 0)
             printf("%d", tbuff[i]+1);
             if(((i+1) % frame_w)) {
                 printf("");

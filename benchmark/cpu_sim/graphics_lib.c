@@ -1,10 +1,9 @@
 #include "include/graphics_lib.h"
-#include "include/kernel.h"
 
 // Returns the barycentric interpolation of the given three
 void barycentric_coordinates(vector_t* l, vector_t point, vector_t pVs[3]) {
     float m[3][3] = {
-        {itof(1), itof(1), itof(1)},
+        {1.0, 1.0, 1.0},
         {pVs[0].x, pVs[1].x, pVs[2].x},
         {pVs[0].y, pVs[1].y, pVs[2].y}
     };
@@ -33,7 +32,7 @@ void barycentric_coordinates(vector_t* l, vector_t point, vector_t pVs[3]) {
     l->z = bc_im[2][0] * 1.0 + bc_im[2][1] * point.x + bc_im[2][2] * point.y;
 }
 
-get_texture(vector_t* col, texture_t texture, float s, float t) {
+void get_texture(vector_t* col, texture_t texture, float s, float t) {
     s = s > 0 ? s : -s;
     t = t > 0 ? t : -t;
     int texel_x = ((s - (int)s) * (texture.w-1)) + 0.5;

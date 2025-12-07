@@ -14,7 +14,7 @@ extern int threadIdx;
 #define isqrt(x) (1 / sqrt(x))
 #define mod(a, b) ((a) % (b))
 #define itof(i) ((float)(i))
-#define ftoi(f) ((int)(f));
+#define ftoi(f) ((int)(f))
 
 #endif
 
