@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TRIANGLE_H
+#define TRIANGLE_H
 
 // Triangle Inputs
 //  - Bounding Box Starting pixel
@@ -24,3 +25,5 @@ typedef struct {
 } triangle_arg_t;
 
 void kernel_triangle(void*);
+
+#endif

@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef PIXEL_H
+#define PIXEL_H
 #include "graphics_lib.h"
 
 typedef struct {
@@ -23,3 +23,5 @@ typedef struct {
 } pixel_arg_t;
 
 void kernel_pixel(void*);
+
+#endif

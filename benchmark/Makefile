@@ -18,8 +18,9 @@ CPU_BUILD_DIR = build/
 CPU_OUTPUT_DIR = $(CPU_BUILD_DIR)output/
 
 # GPU files
-GPU_LIB_SRCS = kernels/graphics_lib.c
-GPU_KERNEL_SRCS = $(filter-out $(GPU_LIB_SRCS), $(wildcard kernels/*.c))
+GPU_LIB_SRCS = 
+GPU_LIB_EXCLUDE = kernels/graphics_lib.c
+GPU_KERNEL_SRCS = $(filter-out $(GPU_LIB_EXCLUDE), $(wildcard kernels/*.c))
 GPU_OUTPUT_DIR = compiled/
 GPU_TARGETS = $(patsubst kernels/%.c, $(GPU_OUTPUT_DIR)%.asm, $(GPU_KERNEL_SRCS))
 
@@ -53,7 +54,9 @@ clean:
 # Pattern rule: How to build 'compiled/X.asm' from 'kernels/X.c' + 'graphics_lib.c'
 $(GPU_OUTPUT_DIR)%.asm: kernels/%.c $(GPU_LIB_SRC)
 	mkdir -p $(GPU_OUTPUT_DIR)
-	$(GPU_CC) $(GPU_CFLAGS) $^ -o $@
+	$(GPU_CC) $(GPU_CFLAGS) $^
+	mv kernels/*.ir $(GPU_OUTPUT_DIR)
+	mv kernels/*.s $(GPU_OUTPUT_DIR)
 
 # Tell 'make' that 'all', 'run', and 'clean' are not files
 .PHONY: all run clean

@@ -1,4 +1,6 @@
 // CPU kernel simulator
+#ifndef KERNEL_H
+#define KERNEL_H
 
 #ifdef CPU_SIM
 #include "../../cpu_sim/include/cpu_kernel.h"
@@ -12,6 +14,7 @@ extern int threadIdx;
 #define isqrt(x) (1 / sqrt(x))
 #define mod(a, b) ((a) % (b))
 #define itof(i) ((float)(i))
+#define ftoi(f) ((int)(f));
 
 #endif
 
@@ -27,9 +30,11 @@ extern int blockIdx();
 extern int blockDim();
 extern int threadIdx();
 
+#define mod(a, b) ((a) - (b)*((a)/(b)))
 #define threadIdx (threadIdx())
 #define blockDim (blockDim())
 #define blockIdx (blockIdx())
 
-#define mod(a, b) (a - b*(a/b))
+#endif
+
 #endif

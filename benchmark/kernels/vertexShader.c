@@ -117,17 +117,13 @@ void kernel_vertexShader(void* arg)
         {
             p_world[j] += lcs[k*3 + j] * p2[k]; 
         }
-        switch (j) {
-            case 0:
-                args->threeDVertTrans[i].coords.x = p_world[j] + args->Oa->x;
-                break;
-            case 1:
-                args->threeDVertTrans[i].coords.y = p_world[j] + args->Oa->y;
-                break;
-            case 2:
-                args->threeDVertTrans[i].coords.z = p_world[j] + args->Oa->z;
-                break;
-        }
+
+        if(j == 0)
+            args->threeDVertTrans[i].coords.x = p_world[j] + args->Oa->x;
+        else if(j == 1)
+            args->threeDVertTrans[i].coords.y = p_world[j] + args->Oa->y;
+        if(j == 2)
+            args->threeDVertTrans[i].coords.z = p_world[j] + args->Oa->z;
     }
     args->threeDVertTrans[i].s = args->threeDVert[i].s;
     args->threeDVertTrans[i].t = args->threeDVert[i].t;
@@ -143,7 +139,7 @@ void kernel_vertexShader(void* arg)
         args->threeDVertTrans[i].coords.z - args->camera->z
     };
 
-    float q[3] = {0, 0, 0};
+    float q[3] = {0.0, 0.0, 0.0};
 
     // q = 3Dnorm @ trans^-1
     for(int j = 0; j < 3; j++)
@@ -159,7 +155,7 @@ void kernel_vertexShader(void* arg)
 
     args->twoDVert[i].coords.x = q[0] / q[2];
     args->twoDVert[i].coords.y = q[1] / q[2];
-    args->twoDVert[i].coords.z = itof(1) / q[2];
+    args->twoDVert[i].coords.z = 1.0 / q[2];
 
     args->twoDVert[i].s = args->threeDVert[i].s;
     args->twoDVert[i].t = args->threeDVert[i].t;

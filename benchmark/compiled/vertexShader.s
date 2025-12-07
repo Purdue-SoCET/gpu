@@ -1,20 +1,20 @@
        section data
        global cos
        type cos func
+       global sin
+       type sin func
        global ftoi
        type ftoi func
        global itof
        type itof func
-       global sin
-       type sin func
        global isqrt
        type isqrt func
-       global threadIdx
-       type threadIdx func
-       global blockDim
-       type blockDim func
        global blockIdx
        type blockIdx func
+       global blockDim
+       type blockDim func
+       global threadIdx
+       type threadIdx func
        section data
        section code
        global kernel_vertexShader
@@ -75,20 +75,6 @@
        bge 2, x10, x9, 0
        jal x0, kernel_vertexShader_block3
  kernel_vertexShader_block2:
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       lui, x10, 0
-       lmi, x10, 0
-       lli, x10, 1023
-       beq 1, x10, x9, 0
-       bne 2, x10, x9, 0
-       jal x0, kernel_vertexShader_block6
- kernel_vertexShader_block3:
-       jal x0, kernel_vertexShader_epilog
- kernel_vertexShader_block5:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
@@ -111,6 +97,50 @@
        lmi, x10, 0
        lli, x10, 0
        sw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x9, x9, 0
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x9, x9, 0
+       lw x11, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x9, x9, 4
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       mulf x11, x12, x11
+       mulf x9, x10, x9
+       bltf 1, x11, x9, 0
+       bgef 2, x11, x9, 0
+       jal x0, kernel_vertexShader_block6
+ kernel_vertexShader_block3:
+       jal x0, kernel_vertexShader_epilog
+ kernel_vertexShader_block5:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
@@ -131,66 +161,46 @@
        addi x9, x0, 4
        mul x9, x10, x9
        add x9, x11, x9
-       lw x13, 0(x9)
+       lw x12, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 2
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
-       lw x12, 0(x9)
+       lw x9, 0(x9)
+       addi x9, x9, 8
+       lw x11, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
-       add x11, x8, x9
+       add x13, x8, x9
        addi x10, x0, 2
        addi x9, x0, 4
        mul x9, x10, x9
-       add x9, x11, x9
-       lw x11, 0(x9)
+       add x9, x13, x9
+       lw x10, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x14, x0, 3
-       mul x9, x14, x9
-       addi x14, x9, 1
-       addi x9, x0, 4
-       mul x9, x14, x9
-       add x9, x10, x9
        lw x9, 0(x9)
-       lui, x10, 255
-       lmi, x10, 4095
-       lli, x10, 4048
-       add x15, x8, x10
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       lui, x13, 255
+       lmi, x13, 4095
+       lli, x13, 4048
+       add x15, x8, x13
        addi x14, x0, 0
-       addi x10, x0, 4
-       mul x10, x14, x10
-       add x14, x15, x10
-       mulf x10, x13, x12
-       mulf x9, x11, x9
-       subf x9, x10, x9
-       sw x9, 0(x14)
+       addi x13, x0, 4
+       mul x13, x14, x13
+       add x13, x15, x13
+       mulf x11, x12, x11
+       mulf x9, x10, x9
+       subf x9, x11, x9
+       sw x9, 0(x13)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
@@ -199,65 +209,46 @@
        addi x9, x0, 4
        mul x9, x10, x9
        add x9, x11, x9
-       lw x13, 0(x9)
+       lw x12, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x11, x11, x9
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
-       lw x12, 0(x9)
+       lw x9, 0(x9)
+       addi x9, x9, 0
+       lw x11, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
-       add x11, x8, x9
+       add x13, x8, x9
        addi x10, x0, 0
        addi x9, x0, 4
        mul x9, x10, x9
-       add x9, x11, x9
-       lw x11, 0(x9)
+       add x9, x13, x9
+       lw x10, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x14, x0, 3
-       mul x9, x14, x9
-       addi x14, x9, 2
-       addi x9, x0, 4
-       mul x9, x14, x9
-       add x9, x10, x9
        lw x9, 0(x9)
-       lui, x10, 255
-       lmi, x10, 4095
-       lli, x10, 4048
-       add x15, x8, x10
+       addi x9, x9, 8
+       lw x9, 0(x9)
+       lui, x13, 255
+       lmi, x13, 4095
+       lli, x13, 4048
+       add x15, x8, x13
        addi x14, x0, 1
-       addi x10, x0, 4
-       mul x10, x14, x10
-       add x14, x15, x10
-       mulf x10, x13, x12
-       mulf x9, x11, x9
-       subf x9, x10, x9
-       sw x9, 0(x14)
+       addi x13, x0, 4
+       mul x13, x14, x13
+       add x13, x15, x13
+       mulf x11, x12, x11
+       mulf x9, x10, x9
+       subf x9, x11, x9
+       sw x9, 0(x13)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
@@ -266,116 +257,146 @@
        addi x9, x0, 4
        mul x9, x10, x9
        add x9, x11, x9
-       lw x13, 0(x9)
+       lw x12, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 1
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
-       lw x12, 0(x9)
+       lw x9, 0(x9)
+       addi x9, x9, 4
+       lw x11, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 4036
+       add x13, x8, x9
+       addi x10, x0, 1
+       addi x9, x0, 4
+       mul x9, x10, x9
+       add x9, x13, x9
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       lui, x13, 255
+       lmi, x13, 4095
+       lli, x13, 4048
+       add x15, x8, x13
+       addi x14, x0, 2
+       addi x13, x0, 4
+       mul x13, x14, x13
+       add x13, x15, x13
+       mulf x11, x12, x11
+       mulf x9, x10, x9
+       subf x9, x11, x9
+       sw x9, 0(x13)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
+       add x11, x8, x9
+       addi x10, x0, 0
+       addi x9, x0, 4
+       mul x9, x10, x9
+       add x9, x11, x9
+       lw x14, 0(x9)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
+       add x11, x8, x9
+       addi x10, x0, 0
+       addi x9, x0, 4
+       mul x9, x10, x9
+       add x9, x11, x9
+       lw x13, 0(x9)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
+       add x11, x8, x9
+       addi x10, x0, 1
+       addi x9, x0, 4
+       mul x9, x10, x9
+       add x9, x11, x9
+       lw x12, 0(x9)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
        add x11, x8, x9
        addi x10, x0, 1
        addi x9, x0, 4
        mul x9, x10, x9
        add x9, x11, x9
        lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 384
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x14, x0, 3
-       mul x14, x14, x9
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
+       add x15, x8, x9
+       addi x10, x0, 2
        addi x9, x0, 4
-       mul x9, x14, x9
-       add x9, x10, x9
+       mul x9, x10, x9
+       add x9, x15, x9
+       lw x10, 0(x9)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4048
+       add x16, x8, x9
+       addi x15, x0, 2
+       addi x9, x0, 4
+       mul x9, x15, x9
+       add x9, x16, x9
        lw x9, 0(x9)
+       mulf x13, x14, x13
+       mulf x11, x12, x11
+       addf x11, x13, x11
+       mulf x9, x10, x9
+       addf x9, x11, x9
+       isqrt x9, x9
        lui, x10, 255
        lmi, x10, 4095
-       lli, x10, 4048
-       add x15, x8, x10
-       addi x14, x0, 2
-       addi x10, x0, 4
-       mul x10, x14, x10
-       add x14, x15, x10
-       mulf x10, x13, x12
-       mulf x9, x11, x9
-       subf x9, x10, x9
-       sw x9, 0(x14)
+       lli, x10, 4032
+       add x10, x8, x10
+       sw x9, 0(x10)
        lui, x9, 255
        lmi, x9, 4095
-       lli, x9, 4048
+       lli, x9, 4028
+       add x10, x8, x9
+       addi x9, x0, 0
+       sw x9, 0(x10)
+       jal x0, kernel_vertexShader_block8
+ kernel_vertexShader_block6:
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4036
        add x11, x8, x9
        addi x10, x0, 0
        addi x9, x0, 4
        mul x9, x10, x9
-       add x9, x11, x9
-       lw x13, 0(x9)
+       add x10, x11, x9
+       lui, x9, 63
+       lmi, x9, 2048
+       lli, x9, 0
+       sw x9, 0(x10)
+       jal x0, kernel_vertexShader_block7
+ kernel_vertexShader_block7:
        lui, x9, 255
        lmi, x9, 4095
-       lli, x9, 4048
-       add x11, x8, x9
-       addi x10, x0, 0
-       addi x9, x0, 4
-       mul x9, x10, x9
-       add x9, x11, x9
-       lw x12, 0(x9)
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 4048
+       lli, x9, 4036
        add x11, x8, x9
        addi x10, x0, 1
        addi x9, x0, 4
        mul x9, x10, x9
-       add x9, x11, x9
-       lw x10, 0(x9)
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 4048
-       add x14, x8, x9
-       addi x11, x0, 1
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x14, x9
-       lw x9, 0(x9)
-       lui, x11, 255
-       lmi, x11, 4095
-       lli, x11, 4048
-       add x15, x8, x11
-       addi x14, x0, 2
-       addi x11, x0, 4
-       mul x11, x14, x11
-       add x11, x15, x11
-       lw x11, 0(x11)
-       mulf x12, x13, x12
-       mulf x9, x10, x9
-       addf x10, x12, x9
-       jal x0, kernel_vertexShader_splitted_block_1
- kernel_vertexShader_block6:
-       jal x0, kernel_vertexShader_epilog
+       add x10, x11, x9
+       lui, x9, 63
+       lmi, x9, 2048
+       lli, x9, 0
+       sw x9, 0(x10)
+       jal x0, kernel_vertexShader_block5
  kernel_vertexShader_block8:
        lui, x9, 255
        lmi, x9, 4095
@@ -383,7 +404,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 1, x9, x10, 0
        jal x0, kernel_vertexShader_block9
  kernel_vertexShader_block9:
        lui, x9, 255
@@ -426,17 +447,8 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x11, x11, x9
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
+       lw x9, 0(x9)
+       addi x9, x9, 0
        lw x9, 0(x9)
        lui, x10, 255
        lmi, x10, 4095
@@ -453,18 +465,8 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 1
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
+       lw x9, 0(x9)
+       addi x9, x9, 4
        lw x9, 0(x9)
        lui, x10, 255
        lmi, x10, 4095
@@ -481,18 +483,8 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 4
-       lw x10, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 2
-       addi x9, x0, 4
-       mul x9, x11, x9
-       add x9, x10, x9
+       lw x9, 0(x9)
+       addi x9, x9, 8
        lw x9, 0(x9)
        lui, x10, 255
        lmi, x10, 4095
@@ -712,7 +704,13 @@
        lli, x10, 4032
        add x10, x8, x10
        sw x9, 0(x10)
-       jal x0, kernel_vertexShader_splitted_block_2
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 4024
+       add x10, x8, x9
+       addi x9, x0, 3
+       sw x9, 0(x10)
+       jal x0, kernel_vertexShader_block12
  kernel_vertexShader_block11:
        lui, x9, 255
        lmi, x9, 4095
@@ -739,7 +737,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 6
-       blt 0, x9, x10
+       blt 2, x9, x10, 0
        jal x0, kernel_vertexShader_block13
  kernel_vertexShader_block13:
        lui, x9, 255
@@ -874,7 +872,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 9
-       blt 0, x9, x10
+       blt 3, x9, x10, 0
        jal x0, kernel_vertexShader_block17
  kernel_vertexShader_block17:
        lui, x9, 255
@@ -923,36 +921,27 @@
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x12, x0, 3
-       mul x12, x12, x9
-       addi x9, x0, 4
-       mul x9, x12, x9
+       addi x12, x0, 20
+       mul x9, x9, x12
        add x9, x11, x9
-       lw x12, 0(x9)
+       addi x9, x9, 0
+       addi x9, x9, 0
+       lw x11, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 0
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x13, x0, 3
-       mul x13, x13, x9
-       addi x9, x0, 4
-       mul x9, x13, x9
-       add x9, x11, x9
        lw x9, 0(x9)
-       lui, x11, 255
-       lmi, x11, 4095
-       lli, x11, 4008
-       add x11, x8, x11
-       subf x9, x12, x9
-       sw x9, 0(x11)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       lui, x12, 255
+       lmi, x12, 4095
+       lli, x12, 4008
+       add x12, x8, x12
+       subf x9, x11, x9
+       sw x9, 0(x12)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
@@ -965,38 +954,27 @@
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x12, x0, 3
-       mul x9, x12, x9
-       addi x12, x9, 1
-       addi x9, x0, 4
-       mul x9, x12, x9
+       addi x12, x0, 20
+       mul x9, x9, x12
        add x9, x11, x9
-       lw x12, 0(x9)
+       addi x9, x9, 0
+       addi x9, x9, 4
+       lw x11, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 0
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x13, x0, 3
-       mul x9, x13, x9
-       addi x13, x9, 1
-       addi x9, x0, 4
-       mul x9, x13, x9
-       add x9, x11, x9
        lw x9, 0(x9)
-       lui, x11, 255
-       lmi, x11, 4095
-       lli, x11, 4008
-       add x11, x8, x11
-       addi x13, x11, 4
-       subf x9, x12, x9
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       lui, x12, 255
+       lmi, x12, 4095
+       lli, x12, 4008
+       add x12, x8, x12
+       addi x13, x12, 4
+       subf x9, x11, x9
        sw x9, 0(x13)
        lui, x11, 0
        lmi, x11, 2
@@ -1010,12 +988,11 @@
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x12, x0, 3
-       mul x9, x12, x9
-       addi x12, x9, 2
-       addi x9, x0, 4
-       mul x9, x12, x9
+       addi x12, x0, 20
+       mul x9, x9, x12
        add x9, x11, x9
+       addi x9, x9, 0
+       addi x9, x9, 8
        lw x12, 0(x9)
        lui, x11, 0
        lmi, x11, 2
@@ -1023,18 +1000,8 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 0
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x14, x0, 3
-       mul x9, x14, x9
-       addi x14, x9, 2
-       addi x9, x0, 4
-       mul x9, x14, x9
-       add x9, x11, x9
+       lw x9, 0(x9)
+       addi x9, x9, 8
        lw x11, 0(x9)
        addi x9, x13, 4
        subf x11, x12, x11
@@ -1045,15 +1012,7 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 8
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x12, x0, 4
-       mul x9, x9, x12
-       add x9, x11, x9
+       lw x9, 0(x9)
        lw x9, 0(x9)
        cos x9, x9
        lui, x11, 255
@@ -1065,62 +1024,6 @@
        lmi, x9, 4095
        lli, x9, 3972
        add x9, x8, x9
-       addi x12, x9, 4
-       addi x9, x0, 0
-       itof x9, x9
-       sw x9, 0(x12)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 384
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x9, x9, 8
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x13, x0, 4
-       mul x9, x9, x13
-       add x9, x11, x9
-       lw x9, 0(x9)
-       sin x9, x9
-       addi x11, x12, 4
-       sw x9, 0(x11)
-       addi x9, x11, 4
-       addi x11, x0, 0
-       itof x11, x11
-       sw x11, 0(x9)
-       addi x9, x9, 4
-       addi x11, x0, 1
-       itof x11, x11
-       sw x11, 0(x9)
-       addi x13, x9, 4
-       addi x9, x0, 0
-       itof x9, x9
-       sw x9, 0(x13)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 384
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x9, x9, 8
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x12, x0, 4
-       mul x9, x9, x12
-       add x9, x11, x9
-       lw x9, 0(x9)
-       sin x12, x9
-       addi x9, x13, 4
-       global float32_neg
-       jal x1, float32_neg
-       sw x10, 0(x9)
        addi x11, x9, 4
        addi x9, x0, 0
        itof x9, x9
@@ -1131,18 +1034,50 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 8
-       lw x10, 0(x9)
+       lw x9, 0(x9)
+       lw x9, 0(x9)
+       sin x9, x9
+       addi x11, x11, 4
+       sw x9, 0(x11)
+       addi x9, x11, 4
+       addi x11, x0, 0
+       itof x11, x11
+       sw x11, 0(x9)
+       addi x9, x9, 4
+       addi x11, x0, 1
+       itof x11, x11
+       sw x11, 0(x9)
+       addi x11, x9, 4
+       addi x9, x0, 0
+       itof x9, x9
+       sw x9, 0(x11)
        lui, x11, 0
        lmi, x11, 2
-       lli, x11, 256
+       lli, x11, 384
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x12, x0, 4
-       mul x9, x9, x12
-       add x9, x10, x9
+       addi x9, x9, 8
+       lw x9, 0(x9)
+       lw x9, 0(x9)
+       sin x12, x9
+       addi x9, x11, 4
+       global float32_neg
+       jal x1, float32_neg
+       sw x10, 0(x9)
+       addi x10, x9, 4
+       addi x9, x0, 0
+       itof x9, x9
+       sw x9, 0(x10)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 8
+       lw x9, 0(x9)
        lw x9, 0(x9)
        cos x9, x9
-       addi x10, x11, 4
+       addi x10, x10, 4
        sw x9, 0(x10)
        lui, x9, 255
        lmi, x9, 4095
@@ -1177,7 +1112,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 4, x9, x10, 0
        jal x0, kernel_vertexShader_block21
  kernel_vertexShader_block21:
        lui, x9, 255
@@ -1240,7 +1175,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 5, x9, x10, 0
        jal x0, kernel_vertexShader_block25
  kernel_vertexShader_block25:
        lui, x9, 255
@@ -1314,7 +1249,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 6, x9, x10, 0
        jal x0, kernel_vertexShader_block29
  kernel_vertexShader_block29:
        lui, x9, 255
@@ -1377,7 +1312,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 7, x9, x10, 0
        jal x0, kernel_vertexShader_block33
  kernel_vertexShader_block33:
        lui, x9, 255
@@ -1459,7 +1394,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 8, x9, x10, 0
        jal x0, kernel_vertexShader_block37
  kernel_vertexShader_block37:
        lui, x9, 255
@@ -1522,7 +1457,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 9, x9, x10, 0
        jal x0, kernel_vertexShader_block41
  kernel_vertexShader_block41:
        lui, x9, 255
@@ -1604,7 +1539,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 10, x9, x10, 0
        jal x0, kernel_vertexShader_block45
  kernel_vertexShader_block45:
        lui, x9, 255
@@ -1621,17 +1556,85 @@
        add x11, x8, x11
        lw x9, 0(x11)
        addi x9, x9, 16
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 12
        lw x10, 0(x9)
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x11, x11, x9
-       addi x9, x0, 4
-       mul x9, x11, x9
+       addi x13, x0, 20
+       mul x9, x9, x13
        add x9, x10, x9
+       addi x9, x9, 12
+       lw x9, 0(x9)
+       addi x10, x0, 20
+       mul x10, x11, x10
+       add x10, x12, x10
+       addi x10, x10, 12
+       sw x9, 0(x10)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 16
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 12
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x13, x0, 20
+       mul x9, x9, x13
+       add x9, x10, x9
+       addi x9, x9, 16
+       lw x9, 0(x9)
+       addi x10, x0, 20
+       mul x10, x11, x10
+       add x10, x12, x10
+       addi x10, x10, 16
+       sw x9, 0(x10)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 16
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x11, x0, 20
+       mul x9, x9, x11
+       add x9, x10, x9
+       addi x9, x9, 0
+       addi x9, x9, 0
        lw x10, 0(x9)
        lui, x11, 0
        lmi, x11, 2
@@ -1640,10 +1643,7 @@
        lw x9, 0(x11)
        addi x9, x9, 20
        lw x9, 0(x9)
-       addi x12, x0, 0
-       addi x11, x0, 4
-       mul x11, x12, x11
-       add x9, x9, x11
+       addi x9, x9, 0
        lw x9, 0(x9)
        lui, x11, 255
        lmi, x11, 4095
@@ -1663,12 +1663,11 @@
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 1
-       addi x9, x0, 4
-       mul x9, x11, x9
+       addi x11, x0, 20
+       mul x9, x9, x11
        add x9, x10, x9
+       addi x9, x9, 0
+       addi x9, x9, 4
        lw x10, 0(x9)
        lui, x11, 0
        lmi, x11, 2
@@ -1677,10 +1676,7 @@
        lw x9, 0(x11)
        addi x9, x9, 20
        lw x9, 0(x9)
-       addi x12, x0, 1
-       addi x11, x0, 4
-       mul x11, x12, x11
-       add x9, x9, x11
+       addi x9, x9, 4
        lw x9, 0(x9)
        lui, x11, 255
        lmi, x11, 4095
@@ -1701,12 +1697,11 @@
        lli, x11, 256
        add x11, x8, x11
        lw x9, 0(x11)
-       addi x11, x0, 3
-       mul x9, x11, x9
-       addi x11, x9, 2
-       addi x9, x0, 4
-       mul x9, x11, x9
+       addi x11, x0, 20
+       mul x9, x9, x11
        add x9, x10, x9
+       addi x9, x9, 0
+       addi x9, x9, 8
        lw x11, 0(x9)
        lui, x11, 0
        lmi, x11, 2
@@ -1715,10 +1710,7 @@
        lw x9, 0(x11)
        addi x9, x9, 20
        lw x9, 0(x9)
-       addi x13, x0, 2
-       addi x10, x0, 4
-       mul x10, x13, x10
-       add x9, x9, x10
+       addi x9, x9, 8
        lw x10, 0(x9)
        addi x9, x12, 4
        subf x10, x11, x10
@@ -1727,20 +1719,23 @@
        lmi, x9, 4095
        lli, x9, 3844
        add x10, x8, x9
-       addi x9, x0, 0
-       itof x9, x9
+       lui, x9, 0
+       lmi, x9, 0
+       lli, x9, 0
        sw x9, 0(x10)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3844
        add x9, x8, x9
        addi x9, x9, 4
-       addi x10, x0, 0
-       itof x10, x10
+       lui, x10, 0
+       lmi, x10, 0
+       lli, x10, 0
        sw x10, 0(x9)
        addi x9, x9, 4
-       addi x10, x0, 0
-       itof x10, x10
+       lui, x10, 0
+       lmi, x10, 0
+       lli, x10, 0
        sw x10, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
@@ -1748,7 +1743,7 @@
        add x10, x8, x9
        addi x9, x0, 0
        sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block52
+       jal x0, kernel_vertexShader_block59
  kernel_vertexShader_block47:
        lui, x9, 255
        lmi, x9, 4095
@@ -1775,7 +1770,7 @@
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
+       blt 11, x9, x10, 0
        jal x0, kernel_vertexShader_block49
  kernel_vertexShader_block49:
        lui, x9, 255
@@ -1830,69 +1825,15 @@
        sw x9, 0(x10)
        jal x0, kernel_vertexShader_block51
  kernel_vertexShader_block50:
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 384
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x9, x9, 16
-       lw x15, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x14, 0(x11)
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 3872
-       add x9, x8, x9
-       lw x13, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3872
        add x9, x8, x9
        lw x9, 0(x9)
-       lui, x10, 255
-       lmi, x10, 4095
-       lli, x10, 3876
-       add x11, x8, x10
-       addi x10, x0, 4
-       mul x9, x9, x10
-       add x9, x11, x9
-       lw x12, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 384
-       add x11, x8, x11
-       lw x9, 0(x11)
-       addi x9, x9, 0
-       lw x11, 0(x9)
-       lui, x11, 0
-       lmi, x11, 2
-       lli, x11, 256
-       add x11, x8, x11
-       lw x10, 0(x11)
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 3872
-       add x9, x8, x9
-       lw x9, 0(x9)
-       addi x16, x0, 3
-       mul x10, x16, x10
-       add x10, x10, x9
-       addi x9, x0, 4
-       mul x9, x10, x9
-       add x9, x11, x9
-       lw x9, 0(x9)
-       addi x10, x0, 3
-       mul x10, x14, x10
-       add x11, x10, x13
-       addi x10, x0, 4
-       mul x10, x11, x10
-       add x10, x15, x10
-       addf x9, x12, x9
-       sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block47
+       addi x10, x0, 0
+       beq 12, x9, x10, 0
+       bne 13, x9, x10, 0
+       jal x0, kernel_vertexShader_block53
  kernel_vertexShader_block51:
        lui, x9, 255
        lmi, x9, 4095
@@ -1915,21 +1856,174 @@
  kernel_vertexShader_block52:
        lui, x9, 255
        lmi, x9, 4095
+       lli, x9, 3872
+       add x9, x8, x9
+       lw x9, 0(x9)
+       addi x10, x0, 2
+       beq 14, x9, x10, 0
+       bne 15, x9, x10, 0
+       jal x0, kernel_vertexShader_block58
+ kernel_vertexShader_block53:
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 16
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 3872
+       add x9, x8, x9
+       lw x9, 0(x9)
+       lui, x10, 255
+       lmi, x10, 4095
+       lli, x10, 3876
+       add x13, x8, x10
+       addi x10, x0, 4
+       mul x9, x9, x10
+       add x9, x13, x9
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       addi x13, x0, 20
+       mul x11, x11, x13
+       add x11, x12, x11
+       addi x11, x11, 0
+       addi x11, x11, 0
+       addf x9, x10, x9
+       sw x9, 0(x11)
+       jal x0, kernel_vertexShader_block54
+ kernel_vertexShader_block54:
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 3872
+       add x9, x8, x9
+       lw x9, 0(x9)
+       addi x10, x0, 1
+       beq 14, x9, x10, 0
+       bne 15, x9, x10, 0
+       jal x0, kernel_vertexShader_block56
+ kernel_vertexShader_block55:
+       jal x0, kernel_vertexShader_block52
+ kernel_vertexShader_block56:
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 16
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 3872
+       add x9, x8, x9
+       lw x9, 0(x9)
+       lui, x10, 255
+       lmi, x10, 4095
+       lli, x10, 3876
+       add x13, x8, x10
+       addi x10, x0, 4
+       mul x9, x9, x10
+       add x9, x13, x9
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       addi x9, x9, 4
+       lw x9, 0(x9)
+       addi x13, x0, 20
+       mul x11, x11, x13
+       add x11, x12, x11
+       addi x11, x11, 0
+       addi x11, x11, 4
+       addf x9, x10, x9
+       sw x9, 0(x11)
+       jal x0, kernel_vertexShader_block55
+ kernel_vertexShader_block57:
+       jal x0, kernel_vertexShader_block47
+ kernel_vertexShader_block58:
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 16
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 3872
+       add x9, x8, x9
+       lw x9, 0(x9)
+       lui, x10, 255
+       lmi, x10, 4095
+       lli, x10, 3876
+       add x13, x8, x10
+       addi x10, x0, 4
+       mul x9, x9, x10
+       add x9, x13, x9
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 0
+       lw x9, 0(x9)
+       addi x9, x9, 8
+       lw x9, 0(x9)
+       addi x13, x0, 20
+       mul x11, x11, x13
+       add x11, x12, x11
+       addi x11, x11, 0
+       addi x11, x11, 8
+       addf x9, x10, x9
+       sw x9, 0(x11)
+       jal x0, kernel_vertexShader_block57
+ kernel_vertexShader_block59:
+       lui, x9, 255
+       lmi, x9, 4095
        lli, x9, 3840
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
-       jal x0, kernel_vertexShader_block53
- kernel_vertexShader_block53:
+       blt 12, x9, x10, 0
+       jal x0, kernel_vertexShader_block60
+ kernel_vertexShader_block60:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3836
        add x10, x8, x9
        addi x9, x0, 0
        sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block56
- kernel_vertexShader_block54:
+       jal x0, kernel_vertexShader_block63
+ kernel_vertexShader_block61:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3844
@@ -1942,10 +2036,10 @@
        lui, x10, 0
        lmi, x10, 0
        lli, x10, 0
-       blt 1, x9, x10, 0
-       bge 2, x9, x10, 0
-       jal x0, kernel_vertexShader_block61
- kernel_vertexShader_block55:
+       bltf 14, x9, x10, 0
+       bgef 15, x9, x10, 0
+       jal x0, kernel_vertexShader_block68
+ kernel_vertexShader_block62:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3840
@@ -1962,18 +2056,18 @@
        lli, x9, 3840
        add x9, x8, x9
        lw x9, 0(x9)
-       jpnz p0, kernel_vertexShader_block54
-       jal x0, kernel_vertexShader_block52
- kernel_vertexShader_block56:
+       jpnz p0, kernel_vertexShader_block61
+       jal x0, kernel_vertexShader_block59
+ kernel_vertexShader_block63:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3836
        add x9, x8, x9
        lw x9, 0(x9)
        addi x10, x0, 3
-       blt 0, x9, x10
-       jal x0, kernel_vertexShader_block57
- kernel_vertexShader_block57:
+       blt 13, x9, x10, 0
+       jal x0, kernel_vertexShader_block64
+ kernel_vertexShader_block64:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3840
@@ -2001,12 +2095,12 @@
        lw x11, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
-       lli, x9, 3836
+       lli, x9, 3840
        add x9, x8, x9
        lw x10, 0(x9)
        lui, x9, 255
        lmi, x9, 4095
-       lli, x9, 3840
+       lli, x9, 3836
        add x9, x8, x9
        lw x9, 0(x9)
        addi x14, x0, 3
@@ -2027,10 +2121,10 @@
        mulf x11, x12, x11
        addf x9, x9, x11
        sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block59
- kernel_vertexShader_block58:
-       jal x0, kernel_vertexShader_block55
- kernel_vertexShader_block59:
+       jal x0, kernel_vertexShader_block66
+ kernel_vertexShader_block65:
+       jal x0, kernel_vertexShader_block62
+ kernel_vertexShader_block66:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3836
@@ -2047,9 +2141,9 @@
        lli, x9, 3836
        add x9, x8, x9
        lw x9, 0(x9)
-       jpnz p0, kernel_vertexShader_block58
-       jal x0, kernel_vertexShader_block56
- kernel_vertexShader_block60:
+       jpnz p0, kernel_vertexShader_block65
+       jal x0, kernel_vertexShader_block63
+ kernel_vertexShader_block67:
        lui, x9, 255
        lmi, x9, 4095
        lli, x9, 3844
@@ -2062,12 +2156,12 @@
        lui, x10, 0
        lmi, x10, 0
        lli, x10, 0
-       beq 1, x9, x10, 0
-       bne 2, x9, x10, 0
-       jal x0, kernel_vertexShader_block64
- kernel_vertexShader_block61:
+       beqf 14, x9, x10, 0
+       bnef 15, x9, x10, 0
+       jal x0, kernel_vertexShader_block71
+ kernel_vertexShader_block68:
        jal x0, kernel_vertexShader_epilog
- kernel_vertexShader_block63:
+ kernel_vertexShader_block70:
        lui, x11, 0
        lmi, x11, 2
        lli, x11, 384
@@ -2098,11 +2192,11 @@
        mul x9, x13, x9
        add x9, x14, x9
        lw x9, 0(x9)
-       addi x13, x0, 3
-       mul x13, x13, x11
-       addi x11, x0, 4
-       mul x11, x13, x11
+       addi x13, x0, 20
+       mul x11, x11, x13
        add x11, x12, x11
+       addi x11, x11, 0
+       addi x11, x11, 0
        divf x9, x10, x9
        sw x9, 0(x11)
        lui, x11, 0
@@ -2135,12 +2229,42 @@
        mul x9, x13, x9
        add x9, x14, x9
        lw x9, 0(x9)
-       addi x13, x0, 3
-       mul x11, x13, x11
-       addi x13, x11, 1
-       addi x11, x0, 4
-       mul x11, x13, x11
+       addi x13, x0, 20
+       mul x11, x11, x13
        add x11, x12, x11
+       addi x11, x11, 0
+       addi x11, x11, 4
+       divf x9, x10, x9
+       sw x9, 0(x11)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 28
+       lw x11, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x10, 0(x11)
+       lui, x9, 255
+       lmi, x9, 4095
+       lli, x9, 3844
+       add x13, x8, x9
+       addi x12, x0, 2
+       addi x9, x0, 4
+       mul x9, x12, x9
+       add x9, x13, x9
+       lw x9, 0(x9)
+       addi x12, x0, 20
+       mul x10, x10, x12
+       add x10, x11, x10
+       addi x10, x10, 0
+       addi x11, x10, 8
+       lui, x10, 63
+       lmi, x10, 2048
+       lli, x10, 0
        divf x9, x10, x9
        sw x9, 0(x11)
        lui, x11, 0
@@ -2155,61 +2279,65 @@
        lli, x11, 256
        add x11, x8, x11
        lw x11, 0(x11)
-       addi x9, x0, 1
-       itof x9, x9
-       lui, x10, 255
-       lmi, x10, 4095
-       lli, x10, 3844
-       add x14, x8, x10
-       addi x13, x0, 2
-       addi x10, x0, 4
-       mul x10, x13, x10
-       add x10, x14, x10
-       lw x10, 0(x10)
-       addi x13, x0, 3
-       mul x11, x13, x11
-       addi x13, x11, 2
-       addi x11, x0, 4
-       mul x11, x13, x11
-       add x11, x12, x11
-       divf x9, x9, x10
-       sw x9, 0(x11)
-       jal x0, kernel_vertexShader_epilog
- kernel_vertexShader_block64:
-       jal x0, kernel_vertexShader_epilog
- kernel_vertexShader_splitted_block_1:
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 4048
-       add x13, x8, x9
-       addi x12, x0, 2
-       addi x9, x0, 4
-       mul x9, x12, x9
-       add x9, x13, x9
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 12
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x13, x0, 20
+       mul x9, x9, x13
+       add x9, x10, x9
+       addi x9, x9, 12
        lw x9, 0(x9)
-       mulf x9, x11, x9
-       addf x9, x10, x9
-       isqrt x9, x9
-       lui, x10, 255
-       lmi, x10, 4095
-       lli, x10, 4032
-       add x10, x8, x10
+       addi x10, x0, 20
+       mul x10, x11, x10
+       add x10, x12, x10
+       addi x10, x10, 12
        sw x9, 0(x10)
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 4028
-       add x10, x8, x9
-       addi x9, x0, 0
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 28
+       lw x12, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x11, 0(x11)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 384
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x9, x9, 12
+       lw x10, 0(x9)
+       lui, x11, 0
+       lmi, x11, 2
+       lli, x11, 256
+       add x11, x8, x11
+       lw x9, 0(x11)
+       addi x13, x0, 20
+       mul x9, x9, x13
+       add x9, x10, x9
+       addi x9, x9, 16
+       lw x9, 0(x9)
+       addi x10, x0, 20
+       mul x10, x11, x10
+       add x10, x12, x10
+       addi x10, x10, 16
        sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block8
- kernel_vertexShader_splitted_block_2:
-       lui, x9, 255
-       lmi, x9, 4095
-       lli, x9, 4024
-       add x10, x8, x9
-       addi x9, x0, 3
-       sw x9, 0(x10)
-       jal x0, kernel_vertexShader_block12
+       jal x0, kernel_vertexShader_epilog
+ kernel_vertexShader_block71:
+       jal x0, kernel_vertexShader_epilog
  kernel_vertexShader_epilog:
        lw x9, 0(x8)
        lui, x11, 0

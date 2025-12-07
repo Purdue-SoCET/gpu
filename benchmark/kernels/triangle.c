@@ -3,8 +3,8 @@
 
 void kernel_triangle(void* arg) {
     triangle_arg_t* args = (triangle_arg_t*) arg;
-    int ix = mod(threadIdx, args->bb_size[0]);
-    int iy = mod(threadIdx / args->bb_size[0], args->bb_size[1]);
+    int ix = 0; //mod(threadIdx, args->bb_size[0]);
+    int iy = 0; //mod(threadIdx / args->bb_size[0], args->bb_size[1]);
 
     int u = ix + args->bb_start[0];
     int v = iy + args->bb_start[1];
@@ -12,7 +12,7 @@ void kernel_triangle(void* arg) {
     // === Barycentric Interpolation ===
 
     float bc_col_vector[3];
-    bc_col_vector[0] = 1.0f;
+    bc_col_vector[0] = 1.0;
     bc_col_vector[1] = ((float)u) + .5;
     bc_col_vector[2] = ((float)v)+ .5;
     float l[3] = { // Barycentric Coordinates
@@ -21,10 +21,19 @@ void kernel_triangle(void* arg) {
         bc_col_vector[0] * args->bc_im[2][0] + bc_col_vector[1] * args->bc_im[2][1] + bc_col_vector[2] * args->bc_im[2][2]
     };
 
-    if (l[0] < -.00001f || l[1] < -.00001f || l[2] < -.00001f || (l[0] + l[1] + l[2]) > 1.01) {
+    if (l[0] < -.00001) {
         // Outside of triangle bounding box
 		return;
-	}
+	} else if (l[1] < -.00001) {
+        // Outside of triangle bounding box
+		return;
+    } else if (l[2] < -.00001) { 
+        // Outside of triangle bounding box
+		return;
+    } else if ((l[0] + l[1] + l[2]) > 1.01) {
+        // Outside of triangle bounding box
+		return;
+    }
 
     float pix_z = l[0]*args->pVs[0].z + l[1]*args->pVs[1].z + l[2]*args->pVs[2].z;
     if(pix_z < args->depth_buff[GET_1D_INDEX(u, v, args->buff_w)]) { // Check if current pixel is closer then known pixel
@@ -34,13 +43,5 @@ void kernel_triangle(void* arg) {
 
     // Current pixel is closest - set as so
     args->depth_buff[GET_1D_INDEX(u, v, args->buff_w)] = pix_z;
-    if(GET_1D_INDEX(u, v, args->buff_w) == 3130) {
-        printf("\assigning tag = %d\n", args->tag);
-        printf("\tidx = %d\n", threadIdx);
-        printf("\t<ix,iy> = <%d, %d>\n", ix, iy);
-        printf("\t<u,v> = <%d, %d>\n", u, v);
-        printf("\tTag Buff idx = %d\n", GET_1D_INDEX(u, v, args->buff_w));
-        printf("\tbb = <%d, %d>\n", args->bb_start[0], args->bb_start[1]);
-    }
     args->tag_buff[GET_1D_INDEX(u, v, args->buff_w)] = args->tag;
 }
