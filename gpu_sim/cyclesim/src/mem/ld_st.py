@@ -2,9 +2,11 @@ import enum
 from typing import Optional
 # from gpu_sim.cyclesim.test import ldst
 from src.mem import dcache
-from base import *
+from base import dMemResponse, dCacheRequest
+from latch_forward_stage import Instruction
 import logging
 from bitstring import Bits
+from custom_enums_multi import I_Op, S_Op
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +58,15 @@ class Ldst_Fu:
             #push cache access if no outstanding and dcache ready and instr not complete
             coal: Coalesce = self.ldst_q[0]
             addr = coal.genRequestAddr()
-            write = coal.write
             pc = coal.instr.pc
             self.outstanding = True
             self.dcache_if.push(
                 # CHANGED
                 dCacheRequest(
                     addr_val = addr, 
-                    rw_mode = write)
+                    rw_mode = 'write' if coal.write else 'read',
+
+                )
             )
 
         #Handle hit or miss
@@ -76,7 +79,7 @@ class Ldst_Fu:
 
             ldst_coal = self.ldst_q[0]
             if payload.hit == True and ldst_coal.in_flight_addr:
-                if ldst_coal.inRange(payload.addr, ldst_coal.in_flight_addr):
+                if ldst_coal.inRange(payload.address, ldst_coal.in_flight_addr):
                     self.outstanding = False
                     ldst_coal.parseHit(payload)
                     if ldst_coal.readyWB():
@@ -84,7 +87,7 @@ class Ldst_Fu:
                         self.wb_buffer.append(ldst_coal)
                 else:
                     logging.warning("Error: Cache hit wasn't a LDST_Q addr")
-            elif payload.hit and ldst_coal.inMSHR(payload.addr):
+            elif payload.hit and ldst_coal.inMSHR(payload.address):
                 ldst_coal.parseHit(payload)
                 if ldst_coal.readyWB():
                         ldst_coal = self.ldst_q.pop(0)
@@ -99,8 +102,8 @@ class Ldst_Fu:
                 self.outstanding = False
             else:
                 logger.warning(f"Dcache response ignored")
-                logger.warning(f" {payload.addr}")
-                logger.warning(f" {ldst_coal.inMSHR(payload.addr)}")
+                logger.warning(f" {payload.address}")
+                logger.warning(f" {ldst_coal.inMSHR(payload.address)}")
                 logger.warning(f" {ldst_coal.mshr_addrs}")
 
 
@@ -110,14 +113,42 @@ class Coalesce():
 
     def __init__(self, instr):
         self.instr: Instruction = instr
-        self.write = False # Whether instruction is a ld or st
         self.addrs: list[Bits] = [] # initialized with all addr mem addrs
         self.pending_addrs = [] # List of to be issued addrs
         self.finished_idxs = [0 for i in range(32)] # Hot list of completed thread hits
         self.mshr_addrs = [] # List of missed addresses waiting for mshr hit
         self.in_flight_addr = None # None when no in-flight
-        self.missed = False #Flag to indicate whether 
+        self.missed = False #Flag to indicate whether
+
+        self.write: bool
+        self.size: str
+        match self.instr.opcode:
+            case I_Op.LW.value:
+                self.write = False
+                self.size = "word"
+            case I_Op.LH.value:
+                self.write = False
+                self.size = "half"
+            case I_Op.LB.value:
+                self.write = False
+                self.size = "byte"
+            
+            case S_Op.SW.value:
+                self.write = True
+                self.size = "word"
+            case S_Op.SH.value:
+                self.write = True
+                self.size = "half"
+            case S_Op.SB.value:
+                self.write = True
+                self.size = "byte"
+
+
         for i in range(32):
+            if self.instr.pred[i] == Bits(bin='0b0'):
+                self.finished_idxs[i] = 1
+                self.instr.r
+                continue
             addr = Bits(int=self.instr.rdat1[i].int + self.instr.rdat2[i].int, length=32)
             self.addrs.append(addr)
             if addr & self.cache_line_mask not in self.pending_addrs:
@@ -125,12 +156,15 @@ class Coalesce():
         self.instr.wdat = [None for i in range(32)]
 
 
-    def inRange(self, base_addr: Bits, addr: Bits) -> bool:
+    def inRange(self, base_addr: Bits, addr) -> bool:
         '''
         Returns whether addr can be coalesced with base_addr
         '''
         if base_addr == None or addr == None:
             return False
+        if type(addr) == int:
+            addr = Bits(int=addr, length=32)
+        
         base_addr = base_addr & self.cache_line_mask
         addr = addr & self.cache_line_mask
         if addr == base_addr:
@@ -138,9 +172,12 @@ class Coalesce():
         else:
             return False
     
-    def inMSHR(self, addr: Bits) -> bool:
+    def inMSHR(self, addr) -> bool:
         if len(self.mshr_addrs) == 0:
             return False
+    
+        if type(addr) == int:
+            addr = Bits(int=addr, length=32)
     
         addr = addr & self.cache_line_mask
         if addr == self.mshr_addrs[0]:

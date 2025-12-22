@@ -71,8 +71,10 @@ class dCacheRequest:
     """Wraps a pipeline instruction for the cache."""
     addr_val: int       # The actual memory request
     rw_mode: str        # 'read' or 'write'
+    size: str # 'word' 'half' 'btye'
     store_value: Optional[int] = None    # The values that want to be written to cache
     halt: bool = False
+    
 
     def __post_init__(self):
         self.addr = Addr(self.addr_val) # Create an Addr object and assign it to self.addr
