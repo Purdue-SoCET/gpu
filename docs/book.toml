@@ -1,0 +1,5 @@
+[book]
+authors = ["Sooraj Chetput", "Fan Jing Hoon", "William Cunningham", "Zach Barna", "Kai Ze Ee", "Felix Liu", "Seth McConkey", "Yash Singh", "Daniel Yang", "Cecilie Zhang", "Andrew Larkins", "Shrey Mathur", "Erhao Chen", "Aidan McDonough", "Aiden Sexton", "Tushar Singh", "Pranav Bantval", "Zay Linn Htet", "Jia-He Zhou"]
+language = "en"
+src = "src"
+title = "Cardinal GPU Documentation"
