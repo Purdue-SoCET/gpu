@@ -324,7 +324,7 @@ int main(int argc, char** argv) {
         run_kernel(kernel_pixel, grid_dim, block_dim, (void*)pixel_args);
     }
 
-    // --- FXAA Kernel ---
+    // --- FXAA Kernel --- (it's called post for now but probably want it to be called fxaa and then every shader after should be called its own thing.)
     ALLOCATE_MEM(post_args, post_arg_t, 1);
 
     post_args->color = color_output;
