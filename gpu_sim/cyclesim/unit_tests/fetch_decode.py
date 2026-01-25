@@ -182,12 +182,14 @@ def block_size_4():
         warp_count=6  # 3 warp-groups
     )
 
+
     # ---- latches for ICache ----
     fetch_ic_if = LatchIF("Fetch→ICache")
     ic_de_if    = LatchIF("ICache→Decode")
     memreq_if   = LatchIF("ICache→MemReq")
     memresp_if  = LatchIF("MemResp→ICache")
-
+    de_ibuff_if = LatchIF("Decode→IBuffer")
+    
     # ---- instantiate backend Mem ----
     # fill the memory with DEADBEEF block
     mem_backend = Mem(
@@ -221,11 +223,22 @@ def block_size_4():
         latency=5     # Mem latency = 5 cycles
     )
 
+    # ---- construct Predicate Reg File ----
+    prf = PredicateRegFile(num_preds_per_warp=16, num_warps=8)
+
+    # ---- construct Decode Stage ----
+    decode_stage = DecodeStage(
+        name="DecodeStage",
+        behind_latch=ic_de_if,
+        ahead_latch=de_ibuff_if,
+        prf=prf,
+        forward_ifs_read={"ICache_Decode_Ihit": icache_ihit},
+        forward_ifs_write={"Decode_Scheduler": decode_if}
+    )
     # ------------- RUN TEST -------------
     for cyc in range(20):
         print(f"\n===== CYCLE {cyc} =====")
-        cycle(sched, icache, memstage,
-              fetch_ic_if, memreq_if, memresp_if)
+        cycle(sched, icache, memstage, decode_stage, fetch_ic_if, memreq_if, memresp_if, de_ibuff_if)
 
         if ic_de_if.valid:
             out = ic_de_if.pop()
