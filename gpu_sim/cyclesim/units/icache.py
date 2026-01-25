@@ -91,11 +91,12 @@ class ICacheStage(Stage):
         # STEP 1: Handle incoming memory response (dict FillResponse)
         if self.mem_resp_if.valid:
             resp = self.mem_resp_if.pop()
-            assert isinstance(resp, dict), f"Expected FillResponse dict, got {type(resp)}"
-            pc_int_resp = int(resp["pc"])
-            data_bits = resp["data"]
+            print("Got this in call:,", resp)
+            assert isinstance(resp, Instruction), f"Expected FillResponse dict, got {type(resp)}"
+            pc_int_resp = int(resp.pc)
+            data_bits = Bits(resp.packet)
 
-            print(f"[ICache] Received MemResp uuid={resp.get('uuid')} pc=0x{pc_int_resp:X}")
+            print(f"[ICache] Received MemResp uuid={resp.iid} pc=0x{pc_int_resp:X}")
 
             if data_bits is None:
                 print("[ICache] WARNING: MemResp has no data_bits!")
