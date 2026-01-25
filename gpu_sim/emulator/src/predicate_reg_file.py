@@ -44,19 +44,9 @@ class Predicate_Reg_File(Reg_File):
         raise NotImplementedError(f"Unsupported type for write: {type(addr)}")
 
     @write.register
-    def _(self, addr: Bits, data: Bits) -> None:
-        super().write(addr, data)
-
-    @write.register
     def _(self, thread_id: int, data: Bits) -> None:
-        if thread_id > self.num_regs - 1:
-            global_thread_id = thread_id
-            local_thread_id = self._get_local_thread_id_from(global_thread_id)
-        else:
-            local_thread_id = thread_id
-
-        addr = Bits(uint=local_thread_id, length=5)
-        super().write(addr, data)
+        addr = Bits(uint=(thread_id % 32), length=5) #Note: predicate RF must be able to write to x0!
+        self.arr[addr.uint] = data
 
     def write_all(self, data) -> None:
         for i in range(self.num_regs):

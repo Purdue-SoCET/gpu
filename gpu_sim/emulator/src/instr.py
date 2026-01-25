@@ -26,7 +26,7 @@ class Instr(ABC):
         self.op = op
 
     @abstractmethod
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None, csr: int=None) -> bool:
         pass
 
     def check_overflow(self, result: Union[int, float], global_thread_id: int) -> None:
@@ -73,11 +73,11 @@ class Instr(ABC):
             case Instr_Type.R_TYPE_0:
                 op = R_Op_0(funct3)
                 self = R_Instr_0(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                print(f"rtype_0, funct={op}, rs1={rs1.int}, rs2={rs2.int}")  
+                print(f"rtype_0, funct={op}, rs1={rs1.int}, rs2={rs2.int}, rd={rd.uint}")  
             case Instr_Type.R_TYPE_1:
                 op = R_Op_1(funct3)
                 self = R_Instr_1(op=op, rs1=rs1, rs2=rs2, rd=rd)
-                print(f"rtype_1, funct={op}")  
+                print(f"rtype_1, funct={op}, rs1={rs1.int}, rs2={rs2.int}, rd={rd.uint}")  
             case Instr_Type.I_TYPE_0:
                 op = I_Op_0(funct3)
                 self = I_Instr_0(op=op, rs1=rs1, imm=imm, rd=rd)
@@ -89,7 +89,7 @@ class Instr(ABC):
             case Instr_Type.I_TYPE_2:
                 op = I_Op_2(funct3)
                 self = I_Instr_2(op=op, rs1=rs1, imm=imm, rd=rd, pc=pc)
-                print(f"itype_2, funct={op}")
+                print(f"itype_2, funct={op}, rd={rd.int}, rs1={rs1.int}, imm={imm.int}")
             case Instr_Type.S_TYPE_0:
                 op = S_Op_0(funct3)
                 # rs2 = imm #reads rs2 in imm spot
@@ -103,18 +103,20 @@ class Instr(ABC):
                 op = U_Op(funct3)
                 imm = imm + rs1 #concatenate
                 self = U_Instr(op=op, imm=imm, rd=rd, pc=pc)
-                print(f"utype, funct={op},imm={imm.int}")
+                print(f"utype, funct={op},imm={imm.int}, rd={rd.uint}")
             case Instr_Type.J_TYPE:
                 op = J_Op(funct3)
-                imm = rs1 + rs2 + pred #concatenate
+                imm = pred + rs2 + rs1 #rs1 + rs2 + pred #concatenate
                 self = J_Instr(op=op, rd=rd, imm=imm, pc=pc)
                 print("jtype")
             case Instr_Type.P_TYPE:
                 op = P_Op(funct3)
-                print("ptype")
+                # self = C_Instr(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print("ptype, not implemented yet")
             case Instr_Type.C_TYPE:
                 op = C_Op(funct3)
-                print("ctype")
+                self = C_Instr(op=op, rs1=rs1, rs2=rs2, rd=rd)
+                print(f"ctype, funct={op}, rs1={rs1.uint}, rs2={rs2.uint}, rd={rd.uint}")
             case Instr_Type.F_TYPE:
                 op = F_Op(funct3)
                 self = F_Instr(op=op, rs1=rs1, rd=rd)
@@ -125,6 +127,7 @@ class Instr(ABC):
                 print(f"halt, funct={op}, {funct3}")
             case _:
                 print("Undefined opcode")
+        return self
 
 
 class R_Instr_0(Instr):
@@ -134,19 +137,20 @@ class R_Instr_0(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
-
         match self.op:
             # INT Arithmetic Operations
             case R_Op_0.ADD:
                 result = rdat1.int + rdat2.int
+                print(f"{rdat1.int} + {rdat2.int} = {rdat1.int + rdat2.int}")
             
             case R_Op_0.SUB:
                 result = rdat1.int - rdat2.int
             
             case R_Op_0.MUL:
+                # print(f"{rdat1.int} * {rdat2.int} = {rdat1.int * rdat2.int}")
                 result = rdat1.int * rdat2.int
             
             case R_Op_0.DIV:
@@ -175,9 +179,8 @@ class R_Instr_0(Instr):
 
         self.check_overflow(result, global_thread_id)
 
-        out = result & 0xFFFFFFFF
-        t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        t_reg.write(self.rd, Bits(int=result, length=32))
+        return None
         
 class R_Instr_1(Instr):
     def __init__(self, op: R_Op_1, rs1: Bits, rs2: Bits, rd: Bits) -> None:
@@ -186,10 +189,12 @@ class R_Instr_1(Instr):
         self.rs2 = rs2
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
+        is_float_op = False
 
+        
         match self.op:
             # Comparison Operations
             case R_Op_1.SLTU:
@@ -197,25 +202,49 @@ class R_Instr_1(Instr):
             
             # Floating Point Arithmetic Operations
             case R_Op_1.ADDF:
-                result = rdat1.float + rdat2.float
+                rdat1 = Bits(bytes=rdat1.bytes[::-1]) #flip to little endian
+                rdat2 = Bits(bytes=rdat2.bytes[::-1])
+                is_float_op = True
+                result = Bits(float=rdat1.float + rdat2.float, length=32)
+                print(f"{rdat1.float} + {rdat2.float} = {result.float}")
+                result = Bits(bytes=result.bytes[::-1])
+                
             
             case R_Op_1.SUBF:
-                result = rdat1.float - rdat2.float
+                rdat1 = Bits(bytes=rdat1.bytes[::-1]) #flip to little endian
+                rdat2 = Bits(bytes=rdat2.bytes[::-1])
+                is_float_op = True
+                result = Bits(float=rdat1.float - rdat2.float, length=32)
+                result = Bits(bytes=result.bytes[::-1])
+                
             
             case R_Op_1.MULF:
-                result = rdat1.float * rdat2.float
+                print(f"{rdat1.int}, {rdat2.int}")
+                # Reverse BYTES to convert from big-endian to little-endian
+                little_1 = Bits(bytes=rdat1.bytes[::-1])  # .bytes gives you the byte representation
+                little_2 = Bits(bytes=rdat2.bytes[::-1])
+                is_float_op = True
+                result = Bits(float=little_1.float * little_2.float, length=32)
+                print(f"{little_1.float} * {little_2.float} = {result.float}")
+                result = Bits(bytes=result.bytes[::-1])
+                
             
             case R_Op_1.DIVF:
+                rdat1 = Bits(bytes=rdat1.bytes[::-1]) #flip to little endian
+                rdat2 = Bits(bytes=rdat2.bytes[::-1])
+                is_float_op = True
                 if rdat2.float == 0.0:
                     logger.warning(f"Division by zero in DIVF from thread ID {global_thread_id}: R{self.rd} = R{self.rs1.int} / R{self.rs2.int}")
                     result = float('inf')
                 else:
-                    result = rdat1.float / rdat2.float
+                    result = Bits(float=rdat1.float / rdat2.float, length=32)
+                    result = Bits(bytes=result.bytes[::-1])
             
             # Bit Shifting Operations
             case R_Op_1.SLL:
                 shift_amount = rdat2.uint & 0x1F  # Mask to 5 bits
                 result = (rdat1.int << shift_amount)
+                print(f"{rdat1.int} << {shift_amount} = {result}")
             
             case R_Op_1.SRL:
                 shift_amount = rdat2.uint & 0x1F
@@ -230,9 +259,12 @@ class R_Instr_1(Instr):
 
         self.check_overflow(result, global_thread_id)
 
-        # out = result & 0xFFFFFFFF #shouldn't need this, since Bits already protects against this
-        t_reg.write(self.rd, result) #result should already be Bits class
-        return False
+        if is_float_op:
+            t_reg.write(self.rd, result)
+        else:
+            out = result 
+            t_reg.write(self.rd, Bits(int=out, length=32)) #result should already be Bits class
+        return None
         # t_reg.write(self.rd, Bits(int=out, length=32))
 
 class I_Instr_0(Instr):
@@ -242,7 +274,7 @@ class I_Instr_0(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.int  # Sign-extended immediate
 
@@ -250,6 +282,7 @@ class I_Instr_0(Instr):
             # Immediate INT Arithmetic
             case I_Op_0.ADDI:
                 result = rdat1.int + imm_val
+                print(f"{rdat1.int} + {imm_val} = {result}")
             
             case I_Op_0.SUBI:
                 result = rdat1.int - imm_val
@@ -267,7 +300,7 @@ class I_Instr_0(Instr):
 
         out = result
         t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        return None
 
 class I_Instr_1(Instr):
     def __init__(self, op: I_Op_1, rs1: Bits, rd: Bits, imm: Bits) -> None:
@@ -276,7 +309,7 @@ class I_Instr_1(Instr):
         self.rd = rd
         self.imm = imm
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File = None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File = None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         imm_val = self.imm.uint  # Unsigned immediate for shifts and unsigned compare
 
@@ -297,7 +330,7 @@ class I_Instr_1(Instr):
 
         out = result & 0xFFFFFFFF
         t_reg.write(self.rd, Bits(int=out, length=32))
-        return False
+        return None
 
 class I_Instr_2(Instr):
     def __init__(self, op: I_Op_2, rs1: Bits, rd: Bits, imm: Bits, pc: Bits = None) -> None:
@@ -313,7 +346,7 @@ class I_Instr_2(Instr):
             self.pc = None # Program counter not used for LW/LH/LB
             # self.mem = mem # Memory object for LW/LH/LB
   
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
         # if(self.op != I_Op_2.JALR):
         rdat1 = t_reg.read(self.rs1) #jalr doesn't read from reg file?
         imm_val = self.imm.int  # Sign-extended immediate
@@ -327,7 +360,9 @@ class I_Instr_2(Instr):
                 # if mem is None:
                 #     raise RuntimeError("Memory object required for LW operation")
                 addr = rdat1.int + imm_val
+                print(f"addr: {rdat1.int} + {imm_val} = {rdat1.int + imm_val}")
                 result = mem.read(addr, 4)  # Read 32 bits (4 bytes)
+                print(f"result: {result}")
 
             case I_Op_2.LH:
                 # if self.mem is None:
@@ -363,10 +398,10 @@ class I_Instr_2(Instr):
             
             case _:
                 raise NotImplementedError(f"I-Type operation {self.op} not implemented yet or doesn't exist.")
-            
+        # print(f"loading x{self.rd.int}={hex(result)} from MEM[{hex(addr)}]")
         t_reg.write(self.rd, Bits(int=result, length=32))
-        return False
-        # return self.pc # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
+        return None
+        # return None.pc # If op is JALR, the target PC is returned. Otherwise (for LW/LH/LB), None is returned
 
 class F_Instr(Instr):
     def __init__(self, op: F_Op, rs1: Bits, rd: Bits) -> None:
@@ -374,7 +409,7 @@ class F_Instr(Instr):
         self.rs1 = rs1
         self.rd = rd
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
 
         match self.op:
@@ -419,7 +454,7 @@ class F_Instr(Instr):
         else:
             # For floating point results, write as float
             t_reg.write(self.rd, Bits(float=result, length=32))
-        return False
+        return None
 
 class S_Instr_0(Instr):
     def __init__(self, op: S_Op_0, rs1: Bits, rs2: Bits, imm: Bits) -> None:
@@ -428,7 +463,7 @@ class S_Instr_0(Instr):
         self.rs2 = rs2
         self.imm = imm
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem, pred_reg_file=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
         imm_val = self.imm.int  # Sign-extended immediate
@@ -441,6 +476,8 @@ class S_Instr_0(Instr):
             case S_Op_0.SW:
                 # Store Word (32 bits / 4 bytes)
                 mem.write(addr, rdat2.uint, 4)
+                little_endian_float = Bits(bytes=rdat2.bytes[::-1]).float
+                print(little_endian_float)
             
             case S_Op_0.SH:
                 # Store Half-Word (16 bits / 2 bytes)
@@ -454,7 +491,7 @@ class S_Instr_0(Instr):
             
             case _:
                 raise NotImplementedError(f"S-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
 
 class B_Instr_0(Instr):
     def __init__(self, op: B_Op_0, rs1: Bits, rs2: Bits) -> None:
@@ -463,43 +500,31 @@ class B_Instr_0(Instr):
         self.rs2 = rs2
         # self.pred_reg_file = pred_reg_file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         rdat1 = t_reg.read(self.rs1)
         rdat2 = t_reg.read(self.rs2)
         
         # Evaluate branch condition and write result to predicate register
         match self.op:
             # Comparison Operations (write to predicate register)
-            case B_Op_0.BEQ:
-                # Branch if Equal
-                result = 1 if rdat1.int == rdat2.int else 0
-            
-            case B_Op_0.BNE:
-                # Branch if Not Equal
-                result = 1 if rdat1.int != rdat2.int else 0
-            
-            case B_Op_0.BGE:
-                # Branch if Greater or Equal (signed)
-                result = 1 if rdat1.int >= rdat2.int else 0
-            
-            case B_Op_0.BGEU:
-                # Branch if Greater or Equal (unsigned)
-                result = 1 if rdat1.uint >= rdat2.uint else 0
-            
-            case B_Op_0.BLT:
-                # Branch if Less Than (signed)
-                result = 1 if rdat1.int < rdat2.int else 0
-            
-            case B_Op_0.BLTU:
-                # Branch if Less Than (unsigned)
-                result = 1 if rdat1.uint < rdat2.uint else 0
-            
+            case B_Op_0.BEQ: result = 1 if rdat1.int == rdat2.int else 0
+            case B_Op_0.BNE: result = 1 if rdat1.int != rdat2.int else 0
+            case B_Op_0.BGE: result = 1 if rdat1.int >= rdat2.int else 0
+            case B_Op_0.BGEU: result = 1 if rdat1.uint >= rdat2.uint else 0
+            case B_Op_0.BLT: result = 1 if rdat1.int < rdat2.int else 0
+            case B_Op_0.BLTU: result = 1 if rdat1.uint < rdat2.uint else 0
             case _:
                 raise NotImplementedError(f"B-Type operation {self.op} not implemented yet or doesn't exist.")
 
         # Write to predicate register: PR[local_thread_id] = result
         pred_reg_file.write(global_thread_id, Bits(uint=result, length=1))
-        return False
+        if(result):
+            # print(f"Thread{global_thread_id}: branch taken")
+            pass
+        else:
+            # print(f"Thread{global_thread_id}: branch not taken")
+            pass
+        return None
 
 class U_Instr(Instr):
     def __init__(self, op: U_Op, rd: Bits, imm: Bits, pc: Bits = None) -> None:
@@ -508,7 +533,7 @@ class U_Instr(Instr):
         self.imm = imm
         self.pc = pc  # Program counter for AUIPC
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         match self.op:
             # Build PC
             case U_Op.AUIPC:
@@ -517,8 +542,8 @@ class U_Instr(Instr):
                     raise RuntimeError("Program counter required for AUIPC operation")
                 result = self.pc.int + (self.imm.int << 12)
                 self.check_overflow(result, global_thread_id)
-                out = result & 0xFFFFFFFF
-                t_reg.write(self.rd, Bits(int=out, length=32))
+                t_reg.write(self.rd, Bits(int=result, length=32))
+                
             
             # Building Immediates
             case U_Op.LLI:
@@ -549,36 +574,42 @@ class U_Instr(Instr):
             
             case _:
                 raise NotImplementedError(f"U-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        # print(f"x{self.rd.int}={result}")
+        return None
 
 class C_Instr(Instr):
-    def __init__(self, op: C_Op, rd: Bits, csr: Bits, csr_file=None) -> None:
+    def __init__(self, op: C_Op, rd: Bits, rs1: Bits, rs2: Bits) -> None:
         super().__init__(op)
         self.rd = rd
-        self.csr = csr
-        self.csr_file = csr_file  # Control Status Register file
+        self.rs1 = rs1
+        self.rs2 = rs2
+        # self.csr = csr
+        # self.csr_file = csr_file  # Control Status Register file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
-        if self.csr_file is None:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+        if csr is None:
             raise RuntimeError(f"CSR file required for {self.op.name} operation")
         
-        csr_addr = self.csr.uint
+        # csr_addr = {self.rs1, self.rs2}
+        # print(f"csr_addr={csr_addr}")
 
-        match self.op:
-            # Control Status Register Operations
-            case C_Op.CSRR:
+        # match self.op:
+        #     # Control Status Register Operations
+        #     case C_Op.CSRR:
                 # CSR Read: R[rd] = CSR[csr]
-                csr_val = self.csr_file[chr(119 + csr_addr)]
-                t_reg.write(self.rd, Bits(int=csr_val, length=32))
+        csr_tid = csr["tid"]
+        csr_val = csr_tid[global_thread_id] #global is actually local...
+        t_reg.write(self.rd, Bits(int=csr_val, length=32))
+        # print(f"x{self.rd.int}(rd)={csr_val}")
             
             # case C_Op.CSRW:
             #     # CSR Write: CSR[csr] = R[rd]
             #     rd_val = t_reg.read(self.rd)
             #     # self.csr_file.write(csr_addr, rd_val.int)
             
-            case _:
-                raise NotImplementedError(f"C-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+            # case _:
+            #     raise NotImplementedError(f"C-Type operation {self.op} not implemented yet or doesn't exist.")
+        return None
 
 class J_Instr(Instr):
     def __init__(self, op: J_Op, rd: Bits, imm: Bits, pc: Bits) -> None:
@@ -588,25 +619,27 @@ class J_Instr(Instr):
         self.pc = pc  # Program counter
         # self.pred_reg_file = pred_reg_file  # Predicate register file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         match self.op:
             # Jump and Link
             case J_Op.JAL:
                 # R[rd] = PC + 4
-                self.pc = Bits(int=self.pc.int + 4, length=32)
+                return_addr = self.pc.int + 4
+                # self.pc = Bits(int=self.pc.int + 4, length=32)
 
                 # Set all predicate registers to 1
                 pred_reg_file.write_all(data=Bits(uint=1,length=1))  # writes to all 32 registers
                 
                 # Calculate new PC (PC = PC + imm)
                 self.pc = Bits(int=self.pc.int + self.imm.int, length=32)
+                t_reg.write(self.rd, Bits(int=return_addr, length=32))
 
             case _:
                 raise NotImplementedError(f"J-Type operation {self.op} not implemented yet or doesn't exist.")
         
-        t_reg.write(self.rd, Bits(int=self.pc.int, length=32))
-        return False
-        # return self.pc
+        # t_reg.write(self.rd, Bits(int=self.pc.int, length=32))
+        return None
+        # return None.pc
 
 class P_Instr(Instr):
     def __init__(self, op: P_Op, rs1: Bits, rs2: Bits, pc: Bits, pred_reg_file: Predicate_Reg_File) -> None:
@@ -616,7 +649,7 @@ class P_Instr(Instr):
         self.pc = pc  # Program counter
         self.pred_reg_file = pred_reg_file  # Predicate register file
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         match self.op:
             # Jump Predicate Not Zero
             case P_Op.JPNZ:      
@@ -632,23 +665,24 @@ class P_Instr(Instr):
                     self.pc = Bits(int=self.pc.int + 4, length=32)
             case _:
                 raise NotImplementedError(f"P-Type operation {self.op} not implemented yet or doesn't exist.")
-        return False
+        return None
         # return self.pc
 
-class H_Instr(Instr):
+class H_Instr(Instr): #returns true
     def __init__(self, op: H_Op, funct3: Bits, r_pred: Bits = Bits(bin='11111', length=5)) -> None:
         super().__init__(op)
         self.funct3 = funct3
 
-    def eval(self, global_thread_id: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
+    def eval(self, global_thread_id: int, csr: int, t_reg: Reg_File, mem: Mem=None, pred_reg_file: Predicate_Reg_File=None) -> bool:
         # print(f"{self.funct3}, {self.op}")
-        match self.op:
-            # Halt Operation
-            case H_Op.HALT:
-                print(f"HALT instruction executed by thread ID {global_thread_id}")
-                return True  # Signal that execution should halt
+        return True
+        # match self.op:
+        #     # `Halt` Operation
+        #     case H_Op.HALT:
+        #         print(f"HALT instruction executed by thread ID {global_thread_id}")
+        #         return True  # Signal that execution should halt
             
-            case _:
-                raise NotImplementedError(f"H-Type operation {self.op} not implemented yet or doesn't exist.")
+        #     case _:
+        #         raise NotImplementedError(f"H-Type operation {self.op} not implemented yet or doesn't exist.")
         
-        return False
+        # return False

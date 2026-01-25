@@ -27,12 +27,12 @@ class Mem:
                 if not bits:
                     continue
                 # print(f"{sys.argv[6]}, {type(sys.argv[6])}")
-                if (sys.argv[6] == "hex"):
+                if (sys.argv[5] == "hex"):
                     if len(bits) != 8 or any(c not in "0123456789ABCDEF" for c in bits):
                         raise ValueError(f"Line {line_no}: expected 8 hex, got {bits!r}")
                     word = int(bits, 16) & 0xFFFF_FFFF
                 
-                elif (sys.argv[6] == "bin"):
+                elif (sys.argv[5] == "bin"):
                     if len(bits) != 32 or any(c not in "01" for c in bits):
                         raise ValueError(f"Line {line_no}: expected 32 bits, got {bits!r}")
                     word = int(bits, 2) & 0xFFFF_FFFF
@@ -62,9 +62,12 @@ class Mem:
     def read(self, addr: int, bytes: int) -> int:
         val = 0
 
-        for i in range(bytes):
-            b = self.memory[addr + 1] & 0xFF
+        for i in range(bytes): #reads LSB first
+            b = self.memory[addr + i] & 0xFF #endianness
             val |= b << (8 * i)
+            # print(f"byte_{i}={bin(b)} at mem_addr={addr + i}")
+            
+        # print(f"word={hex(val)} at mem_addr={addr}")
         return val
 
     def write(self, addr: Bits, data: Bits, bytes_t: int) -> None:
@@ -86,16 +89,15 @@ class Mem:
         Groups consecutive bytes [addr, addr+1, addr+2, addr+3] into one word.
         Skips words that are entirely zero (uninitialized).
         """
+        word_bases = {addr & ~0x3 for addr in self.memory.keys()}
+
         with open(path, "w", encoding="utf-8") as f:
-            # round down to nearest word boundary
-            min_addr = min(self.memory.keys(), default=0) & ~0x3
-            max_addr = max(self.memory.keys(), default=0)
-            for base in range(min_addr, max_addr + 1, 4):
+            for base in sorted(word_bases):
                 # collect 4 bytes for this word
-                b0 = self.memory.get(base + 0, 0)
-                b1 = self.memory.get(base + 1, 0)
-                b2 = self.memory.get(base + 2, 0)
-                b3 = self.memory.get(base + 3, 0)
+                b0 = self.memory.get(base + 0, 0) & 0xFF
+                b1 = self.memory.get(base + 1, 0) & 0xFF
+                b2 = self.memory.get(base + 2, 0) & 0xFF
+                b3 = self.memory.get(base + 3, 0) & 0xFF
                 if (b0 | b1 | b2 | b3) == 0:
                     continue  # skip all-zero words
 
