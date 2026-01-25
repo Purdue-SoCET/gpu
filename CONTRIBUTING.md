@@ -128,7 +128,7 @@ There are five branches/types of branches that this repository supports:
 
 ### Example Workflows
 
-#### New Feature
+#### Creating a New Feature
 
 - Clone or fetch updates from the `cardinal` repository: 
 
@@ -161,7 +161,9 @@ There are five branches/types of branches that this repository supports:
   git checkout -b feature/<feature-name>
   ```
 
-- Add, commit, and push changes to the `feature/` branch
+- Make necessary changes to your feature
+
+- Add, commit, and push changes to the `feature/` branch. Do this as often as you want
 
   ```
   git add <filename>
@@ -177,13 +179,75 @@ There are five branches/types of branches that this repository supports:
   git merge origin/main
   ```
 
-- Fix conflicts and run tests again
-- Merge your `feature/` branch into `main` and delete the `feature/` branch
+- Fix conflicts and run tests again, make sure they pass
+- When all tests pass again, merge your `feature/` branch into `main` and delete the `feature/` branch
 
   ```
   git checkout origin/main
   git merge feature/<feature-name>
   git push origin
   git push origin --delete feature/<feature-name>
+  ```
+
+#### Integrating Features
+
+- Clone or fetch updates from the `cardinal` repository: 
+
+  ```
+  git clone https://github.com/Purdue-SoCET/cardinal/tree/main`
+  ```
+
+  OR 
+
+  ```
+  cd <directory>/cardinal
+  git fetch origin
+  ```
+
+- Checkout one of the `feature/` branches you are looking to integrate
+  
+  ```
+  git checkout origin/feature/a
+  ```
+
+- Create an `integration/` branch from the `feature/a` branch
+ 
+  ```
+  git checkout -b integration/a-b
+  ```
+
+- Merge the `feature/b` branch into the `integration/a-b` branch
+
+  ```
+  git fetch origin
+  git merge origin/feature/b
+  ```
+
+- Fix all conflicts
+- Make all changes necessary to integrate the two features
+- Add, commit, and push changes to the `integration/a-b` branch. Do this as often as you want
+
+  ```
+  git add <filename>
+  git commit -m "your commit message here"
+  git push origin
+  ```
+
+- Run tests and make sure they all pass
+- Merge `main` into your feature branch
+
+  ```
+  git fetch origin
+  git merge origin/main
+  ```
+
+- Fix conflicts and run tests again, make sure they pass
+- When all tests pass again, merge the `integration/a-b` branch into `main` and delete the `integration/a-b` branch
+
+  ```
+  git checkout origin/main
+  git merge integration/a-b
+  git push origin
+  git push origin --delete integration/a-b
   ```
 
