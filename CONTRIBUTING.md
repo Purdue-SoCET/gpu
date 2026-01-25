@@ -2,7 +2,25 @@
 
 > **Note:** This is a work in progress. Any feedback is greatly appreciated. Message Seth McConkey (@s3f2607) on Discord
 
+> **Note:** If viewing this file in VS Code, use `CTRL + SHIFT + V` to render this Markdown file in a neat format
+
+- [SoCET GPU Contributing Guide - WORK IN PROGRESS](#socet-gpu-contributing-guide---work-in-progress)
+  - [Directory Structure (Work In Progress)](#directory-structure-work-in-progress)
+  - [Branching Strategy](#branching-strategy)
+    - [1. `main`](#1-main)
+    - [2. `feature/<feature-name>`](#2-featurefeature-name)
+    - [3. `integration/<integration-name>`](#3-integrationintegration-name)
+    - [4. `hotfix/`](#4-hotfix)
+    - [5. `archive`](#5-archive)
+    - [Example Workflows](#example-workflows)
+      - [Creating a New Feature](#creating-a-new-feature)
+      - [Integrating Features](#integrating-features)
+    - [Example Scenarios](#example-scenarios)
+      - [Collaborating on an `integration/` or `feature/` Branch](#collaborating-on-an-integration-or-feature-branch)
+
+
 ## Directory Structure (Work In Progress)
+
 > **Note:** Do not edit this structure directly. Edit the [directory structure source file](./dir_structure_source.md) and use [this website](https://tree.nathanfriend.com) to render it into the format below
 ```
 cardinal/

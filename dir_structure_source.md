@@ -1,6 +1,3 @@
-# Directory Structure
-> Use [this website](https://tree.nathanfriend.com) to render this into a formatted directory structure 
-
 - cardinal
   - gpu
     - common
