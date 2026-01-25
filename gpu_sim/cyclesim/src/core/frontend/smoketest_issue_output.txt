@@ -1,0 +1,184 @@
+=============================== IBUFF SMOKE TEST1 ===============================
+Cycle 0
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+Cycle 1
+---------------------------------------------------------------------------
+iBuffer[0] content: [None, Instruction(pc=0, intended_FU='ADD', warp_id=1, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+Cycle 2
+---------------------------------------------------------------------------
+iBuffer[0] content: [None, None, Instruction(pc=4, intended_FU='SUB', warp_id=0, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+Cycle 3
+---------------------------------------------------------------------------
+iBuffer[0] content: [None, None, None, Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)
+Cycle 4
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, None, Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)
+Cycle 5
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)
+Cycle 6
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)
+Cycle 7
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)
+
+
+
+=============================== IBUFF SMOKE TEST2 ===============================
+Cycle 0
+---------------------------------------------------------------------------
+iBuffer[1] content: [Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 1
+---------------------------------------------------------------------------
+iBuffer[1] content: [Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 2
+---------------------------------------------------------------------------
+iBuffer[1] content: [Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 3
+---------------------------------------------------------------------------
+iBuffer[1] content: [Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=0, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+
+
+
+=============================== IBUFF SMOKE TEST3 ===============================
+Cycle 0
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=1, warp_group_id=0, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 1
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=4, intended_FU='SUB', warp_id=0, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 2
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+
+Cycle 3
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=2, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 4
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=0, intended_FU='ADD', warp_id=3, warp_group_id=1, rs1=10, rs2=11, rd=12, opcode='0000000', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 5
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=4, intended_FU='SUB', warp_id=2, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 6
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([Instruction(pc=4, intended_FU='SUB', warp_id=3, warp_group_id=1, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rdat2=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)])
+---------------------------------------------------------------------------
+
+Cycle 7
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+
+Cycle 8
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+
+Cycle 9
+---------------------------------------------------------------------------
+iBuffer[0] content: [Instruction(pc=8, intended_FU='MUL', warp_id=0, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=8, intended_FU='MUL', warp_id=1, warp_group_id=0, rs1=20, rs2=21, rd=30, opcode='0000010', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=12, intended_FU='DIV', warp_id=0, warp_group_id=0, rs1=40, rs2=41, rd=42, opcode='0000011', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None), Instruction(pc=4, intended_FU='SUB', warp_id=1, warp_group_id=0, rs1=5, rs2=6, rd=7, opcode='0000001', rdat1=0, rdat2=0, wdat=0, issued_cycle=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None)]
+---------------------------------------------------------------------------
+iBuffer[1] content: [None, None, None, None]
+---------------------------------------------------------------------------
+Ready to dispatch slot: deque([])
+---------------------------------------------------------------------------
+
+
+
+
+All smoke tests completed.
