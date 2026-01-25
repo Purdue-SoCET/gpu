@@ -39,6 +39,7 @@ class SchedulerStage(Stage):
 
         print(f"\n[{self.name}] Collision Detection, Decode forwarded {decode_ctrl}")
         # if im getting my odd warp EOP out of my decode
+        print(decode_ctrl)
         if decode_ctrl["type"] == DecodeType.EOP and decode_ctrl["warp"] % 2:
             self.warp_table[decode_ctrl["warp"] // 2].state = WarpState.STALL
             self.warp_table[decode_ctrl["warp"] // 2].pc = decode_ctrl["pc"]
