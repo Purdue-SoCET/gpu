@@ -3,6 +3,7 @@
 Standalone test for IssueStage logic, ported from the bottom of issue.py.
 This script can be run directly to test IssueStage behavior.
 """
+
 from latch_forward_stage import ForwardingIF, Instruction
 from regfile import RegisterFile
 from issue import IssueStage
