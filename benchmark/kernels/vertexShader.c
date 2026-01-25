@@ -6,12 +6,12 @@ void kernel_vertexShader(void* arg)
 {
     vertexShader_arg_t* args = (vertexShader_arg_t*) arg;
 
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-
+    int i = blockIdx * blockDim + threadIdx;
     if(i > 1023) return;
 
     /****** ThreeD Rotation ******/ 
-    // - assuming radians and following V3::RotateThisPointAboutArbitraryAxis and TM::RotateAboutArbitraryAxis
+    // assuming radian
+    // V3::RotateThisPointAboutArbitraryAxis and TM::RotateAboutArbitraryAxis
 
     float lcs[9]; 
     float selAxis[3] = {0.0, 0.0, 0.0};
@@ -35,20 +35,10 @@ void kernel_vertexShader(void* arg)
     lcs[2] = selAxis[0] * args->a_dist->y - selAxis[1] * args->a_dist->x;
 
     //normalize(lcs[0 to 2])
-
-    // CPU Sim Version
-    #ifdef CPU_SIM
-    float lcs_dist = sqrt(lcs[0]*lcs[0] + lcs[1]*lcs[1] + lcs[2]*lcs[2]);
-    #endif
-    // Hardware/Emulator Version (isqrt not sqrt)
-    #ifdef HARDWARE_SIM
     float inv_lcs_dist = isqrt(lcs[0]*lcs[0] + lcs[1]*lcs[1] + lcs[2]*lcs[2]);
-    float lcs_dist = 1 / (inv_lcs_dist);
-    #endif
-
     for(int j = 0; j < 3; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     lcs[3] = args->a_dist->x;
@@ -60,17 +50,17 @@ void kernel_vertexShader(void* arg)
     lcs[8] = lcs[0] * lcs[4] - lcs[1] * lcs[3];
 
     //normalize(lcs[3 to 5])
-    lcs_dist = sqrt(lcs[3]*lcs[3] + lcs[4]*lcs[4] + lcs[5]*lcs[5]);
+    inv_lcs_dist = isqrt(lcs[3]*lcs[3] + lcs[4]*lcs[4] + lcs[5]*lcs[5]);
     for(int j = 3; j < 6; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     //normalize(lcs[6 to 8])
-    lcs_dist = sqrt(lcs[6]*lcs[6] + lcs[7]*lcs[7] + lcs[8]*lcs[8]);
+    inv_lcs_dist = isqrt(lcs[6]*lcs[6] + lcs[7]*lcs[7] + lcs[8]*lcs[8]);
     for(int j = 6; j < 9; j++)
     {
-        lcs[j] = lcs[j] / lcs_dist;
+        lcs[j] = lcs[j] * inv_lcs_dist;
     }
 
     // vertex normalized to rotation origin
@@ -82,12 +72,14 @@ void kernel_vertexShader(void* arg)
 
     /*Create Rotation Matrix */
 
-    //Y AXIS M33::MakeRotationMatrix
+    // Y AXIS M33::MakeRotationMatrix
+
     float rotMat[9] = {
-        cosf(*(args->alpha_r)), 0, sinf(*(args->alpha_r)),
+        cos(*(args->alpha_r)), 0, sin(*(args->alpha_r)),
         0, 1, 0,
-        -sinf(*(args->alpha_r)), 0, cosf(*(args->alpha_r))
+        -sin(*(args->alpha_r)), 0, cos(*(args->alpha_r))
     };
+
 
     /*invert LCS where LCS^-1 = LCS.T*/
     float lcsInv[9];
@@ -125,17 +117,13 @@ void kernel_vertexShader(void* arg)
         {
             p_world[j] += lcs[k*3 + j] * p2[k]; 
         }
-        switch (j) {
-            case 0:
-                args->threeDVertTrans[i].coords.x = p_world[j] + args->Oa->x;
-                break;
-            case 1:
-                args->threeDVertTrans[i].coords.y = p_world[j] + args->Oa->y;
-                break;
-            case 2:
-                args->threeDVertTrans[i].coords.z = p_world[j] + args->Oa->z;
-                break;
-        }
+
+        if(j == 0)
+            args->threeDVertTrans[i].coords.x = p_world[j] + args->Oa->x;
+        else if(j == 1)
+            args->threeDVertTrans[i].coords.y = p_world[j] + args->Oa->y;
+        if(j == 2)
+            args->threeDVertTrans[i].coords.z = p_world[j] + args->Oa->z;
     }
     args->threeDVertTrans[i].s = args->threeDVert[i].s;
     args->threeDVertTrans[i].t = args->threeDVert[i].t;
@@ -151,9 +139,9 @@ void kernel_vertexShader(void* arg)
         args->threeDVertTrans[i].coords.z - args->camera->z
     };
 
-    float q[3] = {0, 0, 0};
+    float q[3] = {0.0, 0.0, 0.0};
 
-    //q = 3Dnorm @ trans^-1
+    // q = 3Dnorm @ trans^-1
     for(int j = 0; j < 3; j++)
     {
         for(int k = 0; k < 3; k++)
@@ -162,11 +150,13 @@ void kernel_vertexShader(void* arg)
         }
     }
 
-    if (q[2] <= 0.0) return;
+    if (q[2] < 0.0) return;
+    if (q[2] == 0.0) return;
 
     args->twoDVert[i].coords.x = q[0] / q[2];
     args->twoDVert[i].coords.y = q[1] / q[2];
     args->twoDVert[i].coords.z = 1.0 / q[2];
+
     args->twoDVert[i].s = args->threeDVert[i].s;
     args->twoDVert[i].t = args->threeDVert[i].t;
 

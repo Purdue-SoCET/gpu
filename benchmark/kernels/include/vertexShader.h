@@ -1,5 +1,6 @@
-#pragma once
-#include <math.h>
+#ifndef VERTEX_SHADER_H
+#define VERTEX_SHADER_H
+
 #include "graphics_lib.h"
 
 //Note: All Vectors and Matrix are flat and expected to be 0 for all initaial values
@@ -27,3 +28,5 @@ typedef struct {
 } vertexShader_arg_t;
 
 void kernel_vertexShader(void*);
+
+#endif

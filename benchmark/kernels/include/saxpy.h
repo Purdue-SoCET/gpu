@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SAXPY_H
+#define SAXPY_H
 
 typedef struct {
     int n;
@@ -8,3 +9,5 @@ typedef struct {
 } saxpy_arg_t;
 
 void kernel_saxpy(void*);
+
+#endif

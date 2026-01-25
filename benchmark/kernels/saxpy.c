@@ -5,7 +5,7 @@ void kernel_saxpy(void* arg) {
     saxpy_arg_t* args = (saxpy_arg_t*) arg;
 
     // Calculate the global thread index
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx * blockDim + threadIdx;
 
     // Perform the calculation if the index is within bounds
     if (i < args->n) {
