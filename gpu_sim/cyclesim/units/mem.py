@@ -13,111 +13,135 @@ from datetime import datetime
 from isa_packets import ISA_PACKETS
 from bitstring import Bits 
 
-# Add parent directory to module search path
-# ------------------------------------------------------------
-# MemStage Class (unchanged except for single-completion-per-cycle)
-# ------------------------------------------------------------
-class MemStage(Stage):
-    """Memory controller functional unit using Mem() backend."""
 
-    def __init__(self, name, behind_latch, ahead_latch, mem_backend, latency=100):
+class MemStage(Stage):
+    """Memory controller functional unit using Mem() backend. ONE completion per cycle."""
+
+    def __init__(self, name, behind_latch, ahead_latch, mem_backend: Mem, latency: int = 5):
         super().__init__(name=name, behind_latch=behind_latch, ahead_latch=ahead_latch)
         self.mem_backend = mem_backend
-        self.latency = latency
+        self.latency = int(latency)
         self.inflight: list[MemRequest] = []
 
-    def compute(self, input_data=None):
-        print(f"\n[{self.name}] Inflight count: {len(self.inflight)}")
-        print(f"[{self.name}] behind_latch.valid={getattr(self.behind_latch, 'valid', None)}")
+    def _payload_to_bits(self, payload, size_hint: int) -> tuple[Bits, int]:
+        """
+        Convert store payload into (Bits, nbytes).
+        Supports:
+          - Bits
+          - bytes/bytearray
+          - int (encoded little-endian, size_hint bytes)
+          - list[int] of 32-bit words (little-endian)
+        """
+        if payload is None:
+            raise ValueError("Write request missing data")
 
-        # ======================================================
-        # 1. Try completing ONE in-flight request per cycle
-        # ======================================================
-        for req in list(self.inflight):
+        if isinstance(payload, Bits):
+            b = payload.tobytes()
+            return payload, len(b)
+
+        if isinstance(payload, (bytes, bytearray)):
+            b = bytes(payload)
+            return Bits(bytes=b), len(b)
+
+        if isinstance(payload, int):
+            n = int(size_hint) if int(size_hint) > 0 else 4
+            b = int(payload).to_bytes(n, "little", signed=False)
+            return Bits(bytes=b), len(b)
+
+        if isinstance(payload, list):
+            bb = bytearray()
+            for w in payload:
+                bb.extend(int(w).to_bytes(4, "little", signed=False))
+            return Bits(bytes=bytes(bb)), len(bb)
+
+        raise TypeError(f"Unsupported write payload type: {type(payload)}")
+
+    def _build_min_inst(self, req_info: dict) -> "Instruction":
+        """Fallback builder if caller didn't pass an Instruction."""
+        pc_raw = req_info.get("pc", 0)
+        pc_bits = pc_raw if isinstance(pc_raw, Bits) else Bits(uint=int(pc_raw), length=32)
+
+        return Instruction(
+            iid=req_info.get("uuid", req_info.get("iid", 0)),
+            pc=pc_bits,
+            intended_FSU=req_info.get("intended_FSU", None),
+            warp=req_info.get("warp", req_info.get("warp_id", 0)),
+            warpGroup=req_info.get("warpGroup", None),
+            opcode=req_info.get("opcode", None),
+            rs1=req_info.get("rs1", Bits(uint=0, length=5)),
+            rs2=req_info.get("rs2", Bits(uint=0, length=5)),
+            rd=req_info.get("rd", Bits(uint=0, length=5)),
+        )
+
+    def compute(self, input_data=None):
+        # 1) decrement remaining for all inflight
+        for req in self.inflight:
             req.remaining -= 1
 
-            if req.remaining <= 0:
-                # Read from memory (returns Bits)
+        # 2) complete at most ONE ready request
+        for req in list(self.inflight):
+            if req.remaining > 0:
+                continue
+
+            # can't push? stall (keep inflight)
+            if not self.ahead_latch.ready_for_push():
+                return
+
+            inst = getattr(req, "inst", None)  # dynamically attached
+
+            if req.rw_mode == "write":
+                data_bits, nbytes = self._payload_to_bits(req.data, req.size)
+                self.mem_backend.write(req.addr, data_bits, nbytes)
+
+                # If you want to mark completion on the Instruction:
+                if inst is not None:
+                    inst.mem_status = "WRITE_DONE"   # optional dynamic field
+
+                # For pipeline consistency, push Instruction forward if available.
+                # Otherwise push a minimal Instruction so downstream doesn't crash.
+                self.ahead_latch.push(inst if inst is not None else self._build_min_inst({
+                    "pc": req.pc, "uuid": req.uuid, "warp": req.warp_id
+                }))
+
+            else:
+                # READ
                 data_bits = self.mem_backend.read(req.addr, req.size)
-                print(f"[{self.name}] DEBUG: trying to read from Mem backend @ 0x{req.addr:X}")
 
-                # ----------------------------
-                # Retrieve or build Instruction
-                # ----------------------------
-                inst: Optional[Instruction] = getattr(req, "inst", None)
-
+                # attach fetched packet to instruction
                 if inst is None:
-                    # Fallback: construct a minimal Instruction with correct types
-                    pc_int = req.pc
-                    pc_bits = pc_int if isinstance(pc_int, Bits) else Bits(uint=pc_int, length=32)
+                    # build Instruction if caller didn't provide one
+                    inst = self._build_min_inst({"pc": req.pc, "uuid": req.uuid, "warp": req.warp_id})
 
-                    inst = Instruction(
-                        iid=req.uuid,
-                        pc=pc_bits,
-                        intended_FSU=None,
-                        warp=req.warp_id,
-                        warpGroup=None,
-                        opcode=None,  # placeholder; type hints aren't enforced at runtime
-                        rs1=Bits(uint=0, length=5),
-                        rs2=Bits(uint=0, length=5),
-                        rd=Bits(uint=0, length=5),
-                    )
+                inst.packet = data_bits
+                self.ahead_latch.push(inst)
 
-                # Update the instruction with fetched packet
-                inst.packet = data_bits  # raw 32-bit instruction as Bits
+            self.inflight.remove(req)
+            return  # enforce ONE completion per cycle
 
-                # Optionally you could also log or mark timing here:
-                # inst.mark_stage_exit(self.name, <cycle>) if you track cycles externally
-
-                # Push UPDATED Instruction forward instead of a dict
-                if self.ahead_latch.ready_for_push():
-                    self.ahead_latch.push(inst)
-                    pc_show = int(inst.pc) if isinstance(inst.pc, Bits) else inst.pc
-                    print(f"[{self.name}] Completed read for warp={inst.warp} pc=0x{pc_show:X}")
-
-                self.inflight.remove(req)
-                return  # Stop after 1 completion
-
-        # ======================================================
-        # 2. Accept a new request if no completion happened
-        # ======================================================
+        # 3) accept a new request (only if no completion happened this cycle)
         if self.behind_latch and self.behind_latch.valid:
             req_info = self.behind_latch.pop()
 
-            # ------------- pull or build the Instruction -------------
-            inst: Optional[Instruction] = req_info.get("inst", None)
-
+            # Prefer passing Instruction object end-to-end
+            inst = req_info.get("inst", None)
             if inst is None:
-                # Build minimal Instruction from fields in req_info
-                pc_raw = req_info["pc"]
-                pc_bits = pc_raw if isinstance(pc_raw, Bits) else Bits(uint=pc_raw, length=32)
+                inst = self._build_min_inst(req_info)
 
-                inst = Instruction(
-                    iid=req_info.get("iid", None),
-                    pc=pc_bits,
-                    intended_FSU=req_info.get("intended_FSU", None),
-                    warp=req_info.get("warp", None),
-                    warpGroup=req_info.get("warpGroup", None),
-                    opcode=req_info.get("opcode", None),
-                    rs1=req_info.get("rs1", Bits(uint=0, length=5)),
-                    rs2=req_info.get("rs2", Bits(uint=0, length=5)),
-                    rd=req_info.get("rd", Bits(uint=0, length=5)),
-                )
-
-            # Use Instruction values as ground truth
-            warp_id = inst.warp if inst.warp is not None else req_info.get("warp", 0)
             pc_int = int(inst.pc) if isinstance(inst.pc, Bits) else int(inst.pc)
+            warp_id = inst.warp if inst.warp is not None else int(req_info.get("warp", req_info.get("warp_id", 0)))
 
             mem_req = MemRequest(
-                addr=req_info["addr"],
-                size=req_info.get("size", 4),
-                uuid=req_info.get("uuid", inst.iid if inst.iid is not None else 0),
-                warp_id=warp_id,
-                pc=pc_int,
+                addr=int(req_info["addr"]),                  # BYTE address
+                size=int(req_info.get("size", 4)),
+                uuid=int(req_info.get("uuid", inst.iid if inst.iid is not None else 0)),
+                warp_id=int(req_info.get("warp_id", warp_id)),
+                pc=int(req_info.get("pc", pc_int)),
+                data=req_info.get("data", None),
+                rw_mode=req_info.get("rw_mode", "read"),
                 remaining=self.latency,
             )
-            # attach the Instruction so we can update it on completion
+
+            # Attach Instruction dynamically (keeps dataclass unchanged)
             mem_req.inst = inst
 
             self.inflight.append(mem_req)
-            print(f"[{self.name}] Accepted mem req warp={warp_id} pc=0x{pc_int:X} lat={self.latency}")
