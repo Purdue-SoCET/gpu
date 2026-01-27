@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Tuple
 from collections import deque
-from base import ForwardingIF, LatchIF, Stage, Addr, Instruction, MemRequest, dCacheFrame, MSHREntry
+from gpu_sim.cyclesim.src.mem.base import ForwardingIF, LatchIF, Stage, Addr, Instruction, MemRequest, dCacheFrame, MSHREntry
 from pathlib import Path
 import atexit
 from bitstring import Bits
@@ -210,13 +210,12 @@ class Mem:
             max_addr = max(self.memory.keys())
 
             for base in range(min_addr, max_addr + 1, 4):
+                if not any((base + i) in self.memory for i in range(4)):
+                    continue
                 b0 = self.memory.get(base + 0, 0)
                 b1 = self.memory.get(base + 1, 0)
                 b2 = self.memory.get(base + 2, 0)
                 b3 = self.memory.get(base + 3, 0)
-
-                if (b0 | b1 | b2 | b3) == 0:
-                    continue
 
                 word = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
                 f.write(f"{base:#010x} {word:#010x}\n")

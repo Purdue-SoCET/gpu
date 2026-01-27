@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Tuple
 from collections import deque
-from base import *
+from gpu_sim.cyclesim.src.mem.base import *
 
 
 # --- Cache Configuration ---
@@ -193,7 +193,7 @@ class CacheBank:
     def _get_lru_way(self, set_index: int) -> int:
         return self.lru[set_index][-1]  # Get the LRU way (last of the list)
 
-    def check_hit(self, addr: Addr, rw_mode: str, data: int) -> Tuple[bool, int]:
+    def check_hit(self, addr: Addr, rw_mode: str, data: int, size: str = 'word', raw_addr: int = 0) -> Tuple[bool, int]:
         set_idx = addr.set_index    # The set index
         tag = addr.tag      # The tag
         
@@ -204,7 +204,24 @@ class CacheBank:
                 load_data = frame.block[addr.block_offset]  # Load the data from that specific word
                 
                 if rw_mode == 'write':  # if it's a write request
-                    frame.block[addr.block_offset] = data   # Write the data to that specific word
+                    old_word = frame.block[addr.block_offset]
+                    new_word = old_word
+                    byte_offset = raw_addr & 0x3 # Get the bottom 2 bits
+                    
+                    if size == 'word':
+                        new_word = data
+                    elif size == 'half':
+                        # Shift data to correct position and Mask
+                        shift = byte_offset * 8
+                        mask = 0xFFFF << shift
+                        # Clear old bits, OR in new bits
+                        new_word = (old_word & ~mask) | ((data << shift) & mask)
+                    elif size == 'byte':
+                        shift = byte_offset * 8
+                        mask = 0xFF << shift
+                        new_word = (old_word & ~mask) | ((data << shift) & mask)
+
+                    frame.block[addr.block_offset] = new_word
                     frame.dirty = True  # Mark the data as dirty
                 
                 return True, load_data  # Return True (hit), and the hit data
@@ -629,12 +646,18 @@ class LockupFreeCacheStage(Stage):
                     
                     self.mem_out_uuid = mshr.last_issued_uuid   # The default of mem_out_UUID is just last issued UUID
                     
-                    hit, data = bank.check_hit(addr, req.rw_mode, req.store_value)  # Check if the reqeust is a hit or miss
+                    hit, data = bank.check_hit(
+                        addr, 
+                        req.rw_mode, 
+                        req.store_value, 
+                        req.size,
+                        req.addr_val
+                    )  # Check if the reqeust is a hit or miss
                     
                     if hit:
                         # This is Cycle 1 of the hit
                         logging.info(f"Cache: HIT for addr 0x{req.addr_val:X}. Pipelining.")
-                        formatted_data = self.calc_data_size(data, req.addr, req.size)
+                        formatted_data = self.calc_data_size(data, req.addr_val, req.size)
 
                         # Prepare to push the hit result into the pipeline
                         this_cycle_lookup_result = {'data': formatted_data, 'req': req}
@@ -685,6 +708,11 @@ class LockupFreeCacheStage(Stage):
                         req = self.pending_request
                     ))
                     
+        # If we are still holding a request at the end of the cycle, 
+        # we MUST tell the LSU to stall for the next cycle.
+        if self.pending_request is not None:
+            self.stall = True
+
         # --- 5. Push this cycle's lookup result into the hit pipeline ---
         # This pushes either the hit info (Cycle 1) or None (a bubble)
         self.hit_pipeline.append(this_cycle_lookup_result)
