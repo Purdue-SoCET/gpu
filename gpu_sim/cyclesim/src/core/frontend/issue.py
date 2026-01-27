@@ -63,6 +63,7 @@ class IssueStage(Stage):
         ]
         self.iBufferCapacity: List[int] = [0 for _ in range(self.num_iBuffer)]
         self.iBufferHead: List[int] = [0 for _ in range(self.num_iBuffer)]
+        self.iBufferTail: List[int] = [0 for _ in range(self.num_iBuffer)]
         self.iBuff_Full_Flags: List[int] = [0 for _ in range(self.num_iBuffer)]
         self.curr_wg: int = 0  # RR pointer for iBuffer scans
 
@@ -136,8 +137,12 @@ class IssueStage(Stage):
         # 5) Create the ibuffer capacity flag bit vector for WS 
         for i in range(len(self.iBufferCapacity)):
             self.iBuff_Full_Flags[i] = 0
-            if self.iBufferCapacity[i] >= self.num_entries - 1:
-                self.iBuff_Full_Flags[i] = 1
+            if   (self.iBufferCapacity[i] >= self.num_entries - 1): # check capacity
+                if self.iBuffer[i][(self.iBufferHead[i] + (self.iBufferCapacity[i]) - 1) % self.num_entries].warp_id % 2 == 1: # check if tail is even (ref tail eq in fill_ibuffer() func)
+                    self.iBuff_Full_Flags[i] = 1
+            elif (self.iBufferCapacity[i] >= self.num_entries - 2): # check capacity
+                if self.iBuffer[i][(self.iBufferHead[i] + (self.iBufferCapacity[i]) - 1) % self.num_entries].warp_id % 2 == 0: # check if tail is even (ref tail eq in fill_ibuffer() func)
+                    self.iBuff_Full_Flags[i] = 1
 
         # Forwarding interface name should be provided by the caller via forward_ifs_write
         # Here, we forward to all available forward_ifs_write interfaces
@@ -245,6 +250,7 @@ class IssueStage(Stage):
         Pull head instructions from the iBuffer (round-robin) to fill empty
         staging slots: EVEN first (if empty), then ODD (if empty).
         """
+        staged_even_flag = False
         # Fill EVEN staging slot, if available
         if self.staged_even is None:
             inst_even = self._pop_from_ibuffer_matching(lambda inst: (inst.warp_id % 2) == 0)
@@ -252,9 +258,9 @@ class IssueStage(Stage):
             if inst_even is not None:
                 self.staged_even = inst_even
                 self.even_read_progress = 0
-
+                staged_even_flag = True
         # Fill ODD staging slot, if available
-        if self.staged_odd is None:
+        if self.staged_odd is None and staged_even_flag == False:
             inst_odd = self._pop_from_ibuffer_matching(lambda inst: (inst.warp_id % 2) == 1)
             # inst_odd = self._pop_from_ibuffer_matching()
             if inst_odd is not None:
