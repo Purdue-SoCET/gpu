@@ -20,8 +20,8 @@ class SchedulerStage(Stage):
 
         # scheduler bookkeeping
         self.rr_index: int = 0
-        self.max_issues_per_cycle: int = 1
-        self.ready_queue = deque(range(warp_count))
+        # self.max_issues_per_cycle: int = 1
+        # self.ready_queue = deque(range(warp_count))
 
         # debug
         self.issued_warp_last_cycle: Optional[int] = None
@@ -29,7 +29,6 @@ class SchedulerStage(Stage):
         # could add perf counters
     
     # figuring out which warps can/cant issue
-    # ALL PSEUDOCODE CURRENTLY I NEED TO KMS BAD LOL
     def collision(self):
         # pop from decode, issue, writeback
         decode_ctrl = self.forward_ifs_read["Decode_Scheduler"].pop()
@@ -42,26 +41,24 @@ class SchedulerStage(Stage):
             self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.STALL
             self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
             self.warp_table[decode_ctrl["warp_id"] // 2].finished_packet = True
-            return
         
         # if im getting my odd warp barrier out of my decode
         elif decode_ctrl["type"] == DecodeType.Barrier and decode_ctrl["warp_id"] % 2:
             self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.BARRIER
             self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
             self.at_barrier += 1
-            return
 
         # if im getting my odd warp halt out of my decode
         elif decode_ctrl["type"] == DecodeType.halt and decode_ctrl["warp_id"] % 2:
             self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.HALT
-            return
 
-        # clear barrier
-        if self.at_barrier == self.num_groups:
-            self.at_barrier = 0
-            self.rr_index = 0
-            for warp_group in self.warp_table:
-                warp_group.state = WarpState.READY
+        # # clear barrier MIGHT NOT NEED BARRIER ANYMORE
+        # if self.at_barrier == self.num_groups:
+        #     self.at_barrier = 0
+        #     self.rr_index = 0
+        #     for warp_group in self.warp_table:
+        #         warp_group.state = WarpState.READY
+        #         return
 
         # change pc for branch
         if branch_ctrl is not None:
@@ -91,7 +88,8 @@ class SchedulerStage(Stage):
         for fwd_if in self.forward_ifs_read.values():
             if fwd_if.wait:
                 print(f"[{self.name}] Stalled due to wait from next stage")
-                return None
+                # same issue here with nontype and ints
+                return 10000, 10000, 10000
 
         # detecting stalls
         self.collision()
@@ -122,8 +120,8 @@ class SchedulerStage(Stage):
             else:
                 self.rr_index = (self.rr_index + 1) % self.num_groups
         
-        # every warp is unable to issue
-        return None
+        # every warp is unable to issue (syntax with type of thing returned --> needs to go back to none)
+        return 10000, 10000, 10000
     
 if __name__ == "__main__":
     # forward interfaces into warp scheduler
@@ -134,19 +132,22 @@ if __name__ == "__main__":
 
     scheduler_stage = SchedulerStage(
         name = "Schedule",
-        behind_latch = None,
-        ahead_latch = None,
+        behind_latch = None, # needs instantiation from TBS
+        ahead_latch = None, # needs instantiation to i$
         forward_ifs_read = {"Decode_Scheduler": decode_scheduler, "Issue_Scheduler": issue_scheduler, "Branch_Scheduler": branch_scheduler, "Writeback_Scheduler": writeback_scheduler},
         forward_ifs_write = None,
         start_pc = 0,
         warp_count = 6
     )
 
+    #### CHECKING TO SEE WARPS ALL AT INITIAL STATE ####
     # initialization check
     print("INITIAL CHECK OF STATES")
     for warp_group in scheduler_stage.warp_table:
         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+    #### END OF INITIALIZATION CHECK ####
 
+    #### CYCLING SCHEDULER FOR 2 * (NUMBER OF WARPS) AND CHECKING PC AND STATES EACH TIME (NORAL OPERATION)
     decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
     issue_scheduler.push([0] * scheduler_stage.num_groups)
     branch_scheduler.push(None)
@@ -155,7 +156,9 @@ if __name__ == "__main__":
     for i in range(scheduler_stage.warp_count):
         group, warp, pc = scheduler_stage.compute()
         print(f"group: {group}, warp: {warp}, current pc: {pc}, in fight: {scheduler_stage.warp_table[group].in_flight}\n")
+    #### END OF CHECKING SCHEDULER CYCLING (NORMAL OPERATION)
 
+    #### END OF A PACKET FOR A GROUP
     print(f"\nEOP for group 0 -------\n")
 
     group, warp, pc = scheduler_stage.compute()
@@ -174,8 +177,11 @@ if __name__ == "__main__":
     print(f"CURRENT STATES ===\n")
     for warp_group in scheduler_stage.warp_table:
         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+    #### END OF EOP TEST
 
+    #### RESETTING
     decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
+    ####
 
     print(f"cycling through warps a couple times")
     for i in range(7):
@@ -304,22 +310,6 @@ if __name__ == "__main__":
     decode_scheduler.push({"type": DecodeType.halt, "warp_id": 1, "pc":scheduler_stage.warp_table[0].pc})
     group, warp, pc = scheduler_stage.compute()
     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
-
-    # decode_scheduler.push({"type": DecodeType.halt, "warp_id": 2, "pc":scheduler_stage.warp_table[0].pc})
-    # group, warp, pc = scheduler_stage.compute()
-    # print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
-
-    # decode_scheduler.push({"type": DecodeType.halt, "warp_id": 3, "pc":scheduler_stage.warp_table[0].pc})
-    # group, warp, pc = scheduler_stage.compute()
-    # print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
-
-    # decode_scheduler.push({"type": DecodeType.halt, "warp_id": 4, "pc":scheduler_stage.warp_table[0].pc})
-    # group, warp, pc = scheduler_stage.compute()
-    # print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
-
-    # decode_scheduler.push({"type": DecodeType.halt, "warp_id": 5, "pc":scheduler_stage.warp_table[0].pc})
-    # group, warp, pc = scheduler_stage.compute()
-    # print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
     print(f"\nCURRENT STATES ===\n")
     for warp_group in scheduler_stage.warp_table:
