@@ -1,7 +1,9 @@
-from ex_stage.arithmetic_functional_unit import IntUnitConfig, FpUnitConfig, SpecialUnitConfig
-from ex_stage.execute_stage import ExecuteStage
-from wb_stage.wb_stage import WritebackStage, WritebackBufferConfig, RegisterFileConfig
-from ex_stage.functional_unit_config import FunctionalUnitConfig
+"""
+
+from simulator.execute.arithmetic_functional_unit import IntUnitConfig, FpUnitConfig, SpecialUnitConfig
+from simulator.execute.stage import ExecuteStage
+from simulator.writeback.stage import WritebackStage, WritebackBufferConfig, RegisterFileConfig
+from simulator.execute.stage import FunctionalUnitConfig
 
 # Step 0: Create desired configuration classmethods in the respective files:
     # IntUnitConfig -> /ex_stage/arithmetic_functional_unit.py
@@ -43,4 +45,4 @@ wb_stage = WritebackStage.create_pipeline_stage(wb_buffer_config=wb_buffer_confi
 
 if __name__ == "__main__":
     print("Execute Stage and Writeback Stage created successfully with the specified configurations.")
-    
+"""
