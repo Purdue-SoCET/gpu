@@ -4,9 +4,9 @@ Standalone test for IssueStage logic, ported from the bottom of issue.py.
 This script can be run directly to test IssueStage behavior.
 """
 
-from latch_forward_stage import ForwardingIF, Instruction
-from regfile import RegisterFile
-from issue import IssueStage
+from simulator.latch_forward_stage import ForwardingIF, Instruction
+from simulator.issue.regfile import RegisterFile
+from simulator.issue.stage import IssueStage
 import sys
 from pathlib import Path
 
@@ -834,9 +834,9 @@ def test_SMOKE_5():
 
 
 def main(): 
-    ROOT = Path(__file__).resolve().parents[5]
-    out_path = ROOT / "gpu_sim/cyclesim/src/core/frontend/smoketest_issue_output.txt"
-    sys.stdout = open(out_path, "w")
+    #ROOT = Path(__file__).resolve().parents[5]
+    #out_path = ROOT / "gpu_sim/cyclesim/src/core/frontend/smoketest_issue_output.txt"
+    #sys.stdout = open(out_path, "w")
     i=0
     i=test_SMOKE_1(i)
     i=test_SMOKE_2(i)
