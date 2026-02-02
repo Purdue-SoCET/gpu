@@ -4,7 +4,6 @@ from pathlib import Path
 gpu_sim_root = Path(__file__).resolve().parents[3]
 sys.path.append(str(gpu_sim_root))
 
-
 from simulator.base_class import LatchIF
 from common.custom_enums_multi import Instr_Type, R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, J_Op, P_Op, H_Op
 from common.custom_enums import Op
@@ -14,7 +13,7 @@ from simulator.src.mem.mem_controller import MemController
 from simulator.src.mem.Memory import Mem
 from simulator.base_class import *
 
-START_PC = 0
+START_PC = 4
 LAT = 5
 WARP_COUNT = 6
 
@@ -104,17 +103,112 @@ def test_fetch(LAT=10, START_PC=0, WARP_COUNT=6):
     warp_id = 0
     total_cycles = 15
 
-    for c in range(1, total_cycles + 1):
+    tbs_ws_if.clear_all()
+    sched_icache_if.clear_all()
+    icache_mem_req_if.clear_all()
+    dummy_dcache_mem_req_if.clear_all()
+    mem_icache_resp_if.clear_all()
+    dummy_dcache_mem_resp_if.clear_all()
+    icache_decode_if.clear_all()
+    decode_scheduler_fwif.payload = None
+    issue_scheduler_fwif.payload = None
+    branch_scheduler_fwif.payload = None
+    writeback_scheduler_fwif.payload = None
 
-        # Try to inject ONE warp request when the latch is free
-        if warp_id < WARP_COUNT and tbs_ws_if.ready_for_push():
-            dump_latches()
-            req = {"type": DecodeType.MOP, "warp_id": warp_id, "pc": START_PC + warp_id * 4}
-            ok = tbs_ws_if.push(req)
-            assert ok
-            warp_id += 1
+    dummy_Instruction = Instruction(
+        iid=0,
+        pc=Bits(uint=0, length=32),
+        intended_FSU=None,
+        warp=0,
+    )
 
-        step(c)
+    sched_icache_dummy_Instruction = Instruction(
+        iid=0,
+        pc=Bits(uint=0, length=32),
+        intended_FSU=None,
+        warp=0,
+        warpGroup=None
+    )
+
+    icache_mem_req_dummy_Instruction = {
+            "addr": 0,
+            "size": 4,
+            "uuid": 0,
+            "warp_id": 0,
+            "pc": 0,
+            "data": 0,
+            "rw_mode": "read",
+            "remaining": LAT
+    }
+
+
+    mem_icache_resp_dummy_Instruction = Instruction(
+        iid=0,
+        pc=Bits(uint=0, length=32),
+        intended_FSU=None,
+        warp=0,
+        warpGroup=None,
+
+    )
+
+    icache_decode_dummy_Instruction = Instruction(
+        iid=0,
+        pc=Bits(uint=0, length=32),
+        intended_FSU=None,
+        warp=0,
+        warpGroup=None,
+        opcode=None,
+        rs1=0,
+        rs2=0,
+        rd=0
+    )
+
+    # setup some bullshit at the beginning for the latches 
+    tbs_ws_if.push({"warp_id": warp_id, 
+                    "pc": START_PC + warp_id * 4})
+    sched_icache_if.push(sched_icache_dummy_Instruction)
+    icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
+    dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
+    mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
+    dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
+    icache_decode_if.push(icache_decode_dummy_Instruction)
+    
+    # setup some bullshit for the forwarding IFS, i.e. NOTHING!!
+    decode_scheduler_fwif.push(None)
+    issue_scheduler_fwif.push(None)
+    branch_scheduler_fwif.push(None)
+    writeback_scheduler_fwif.push(None)
+
+    # compute order is called in reverse: 
+    # this is wrt. to cycle order: 0
+    # 1) ICache taking a response back from MemController for -2 cycle
+    # 2) MemController servicing requests from ICache for -1 cycle
+    # 3) ICache issuing new requests to MemController for 0 cycle
+    # 4) Warp Scheduler fetching instructions from ICache for 1 cycle
+    # 5) TBS is going BS for t > 1 cycle
+
+    # step #1: initiate computes to pass through dummy instructions
+    # until we reach the first real fetch from TBS
+    icache_stage.compute() # Icache getting MemResp
+    memc.compute()         # MemController servicing ICache req
+    icache_stage.compute() # ICache issuing new MemReq
+    group, warp, pc = scheduler_stage.compute() # Scheduler fetching from ICache
+    print(f"TBS fetched warp {warp} group {group} pc 0x{pc:X}")
+
+
+    # # lets do this sequentially first bc idk what im doing
+
+    # for c in range(1, total_cycles + 1):
+
+    #     # Try to inject ONE warp request when the latch is free
+    #     if warp_id < WARP_COUNT and tbs_ws_if.ready_for_push():
+    #         dump_latches()
+    #         req = {"type": DecodeType.MOP, "warp_id": warp_id, "pc": START_PC + warp_id * 4}
+    #         ok = tbs_ws_if.push(req)
+    #         assert ok
+    #         warp_id += 1
+
+        # step(c)
  
   
 if __name__ == "__main__":
