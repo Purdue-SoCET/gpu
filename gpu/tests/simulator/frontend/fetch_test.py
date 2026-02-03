@@ -24,6 +24,7 @@ dummy_dcache_mem_req_if = LatchIF("Dummy DCache-Mem Latch")
 mem_icache_resp_if = LatchIF("Mem-ICache Latch")
 dummy_dcache_mem_resp_if = LatchIF("Mem-Dummy DCache Latch")
 icache_decode_if = LatchIF("ICache-Decode Latch")
+icache_scheduler_fwif = ForwardingIF(name = "icache_forward_if")
 decode_scheduler_fwif = ForwardingIF(name = "decode_forward_if")
 issue_scheduler_fwif = ForwardingIF(name = "issue_forward_if")
 branch_scheduler_fwif = ForwardingIF(name = "branch_forward_if")
@@ -50,7 +51,7 @@ scheduler_stage = SchedulerStage(
     name="Scheduler_Stage",
     behind_latch=tbs_ws_if,
     ahead_latch=sched_icache_if,
-    forward_ifs_read= {"Decode_Scheduler" : decode_scheduler_fwif, "Issue_Scheduler": issue_scheduler_fwif, "Branch_Scheduler": branch_scheduler_fwif, "Writeback_Scheduler": writeback_scheduler_fwif},
+    forward_ifs_read= {"ICache_Scheduler" : icache_scheduler_fwif, "Decode_Scheduler": decode_scheduler_fwif, "Issue_Scheduler": issue_scheduler_fwif, "Branch_Scheduler": branch_scheduler_fwif, "Writeback_Scheduler": writeback_scheduler_fwif},
     forward_ifs_write=None,
     start_pc=START_PC, 
     warp_count=WARP_COUNT
@@ -65,7 +66,7 @@ icache_stage = ICacheStage(
     cache_config={"cache_size": 32 * 1024, 
                     "block_size": 64, 
                     "associativity": 4},
-    forward_ifs_write= {"Decode_ICache_Ihit": decode_scheduler_fwif},
+    forward_ifs_write= {"ICache_scheduler_Ihit": icache_scheduler_fwif},
 )
 
 def dump_latches():
@@ -108,10 +109,10 @@ def call_stages(debug=False):
     if (debug):
         dump_latches()
 
-    icache_stage.compute() # Icache getting MemResp
+    # icache_stage.compute() # Icache getting MemResp
     
-    if (debug):
-        dump_latches()
+    # if (debug):
+    #     dump_latches()
 
     memc.compute() # MemController servicing ICache req
     if (debug):
@@ -121,11 +122,11 @@ def call_stages(debug=False):
     if (debug):
         dump_latches()
 
-    group, warp, pc = scheduler_stage.compute() # Scheduler fetching from ICache
+    inst = scheduler_stage.compute() # Scheduler fetching from ICache
     if (debug):
         dump_latches()
 
-    print(f"\nTBS fetched warp {warp} group {group} pc 0x{pc:X}\n")
+    print(f"\nTBS fetched warp {inst.warp} group {inst.warpGroup} pc 0x{inst.pc:X}\n")
 
 def cycle(cycles = scheduler_stage.warp_count):
     for i in range(cycles):
@@ -148,7 +149,7 @@ def test_fetch(LAT=2, START_PC=0, WARP_COUNT=6):
     dummy_dcache_mem_resp_if.clear_all()
     icache_decode_if.clear_all()
 
-    decode_scheduler_fwif.payload = None
+    icache_scheduler_fwif.payload = None
     issue_scheduler_fwif.payload = None
     branch_scheduler_fwif.payload = None
     writeback_scheduler_fwif.payload = None
@@ -215,16 +216,26 @@ def test_fetch(LAT=2, START_PC=0, WARP_COUNT=6):
     # setup some bullshit at the beginning for the latches 
     # this is initializing the latches for ONE cycle.
 
+    # tbs_ws_if.push({"warp_id": warp_id, 
+    #                 "pc": START_PC + warp_id * 4})
+    # sched_icache_if.push(sched_icache_dummy_Instruction)
+    # icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
+    # dummy_dcache_mem_req_if.push(dummy_dcache_mem_req_Instruction)
+    # mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
+    # dummy_dcache_mem_resp_if.push(mem_icache_resp_dummy_Instruction)
+    # icache_decode_if.push(icache_decode_dummy_Instruction)
+    
     tbs_ws_if.push({"warp_id": warp_id, 
                     "pc": START_PC + warp_id * 4})
-    sched_icache_if.push(sched_icache_dummy_Instruction)
-    icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    dummy_dcache_mem_req_if.push(dummy_dcache_mem_req_Instruction)
-    mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    dummy_dcache_mem_resp_if.push(mem_icache_resp_dummy_Instruction)
-    icache_decode_if.push(icache_decode_dummy_Instruction)
+    sched_icache_if.push(None)
+    icache_mem_req_if.push(None)
+    dummy_dcache_mem_req_if.push(None)
+    mem_icache_resp_if.push(None)
+    dummy_dcache_mem_resp_if.push(None)
+    icache_decode_if.push(None)
     
     # setup some bullshit for the forwarding IFS, i.e. NOTHING!!
+    icache_scheduler_fwif.push(None)
     decode_scheduler_fwif.push(None)
     issue_scheduler_fwif.push(None)
     branch_scheduler_fwif.push(None)
@@ -239,13 +250,20 @@ def test_fetch(LAT=2, START_PC=0, WARP_COUNT=6):
     input("---- Press Enter to continue to cycle #3 ----")
     
     call_stages(debug=False) # cycle 0
-    # not pushing anything through the tbs_latch now..
-    # icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    # dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
-    # mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    # dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
-    # icache_decode_if.push(icache_decode_dummy_Instruction)
-    # dump_latches()
+
+    input("---- Press Enter to continue to cycle #4 ----")
+    
+    call_stages(debug=False)  # cycle -1
+
+    input("---- Press Enter to continue to cycle #5 ----")
+    
+    call_stages(debug=False) # cycle 0
+
+    input("---- Press Enter to continue to cycle #5 ----")
+    
+    call_stages(debug=False) # cycle 1
+
+    
 
 
 
