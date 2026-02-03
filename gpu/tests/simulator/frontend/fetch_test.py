@@ -14,7 +14,7 @@ from simulator.src.mem.Memory import Mem
 from simulator.base_class import *
 
 START_PC = 4
-LAT = 5
+LAT = 2
 WARP_COUNT = 6
 
 tbs_ws_if = LatchIF("Thread Block Scheduler - Warp Scheduler Latch")
@@ -71,6 +71,7 @@ icache_stage = ICacheStage(
 def dump_latches():
     def s(l): 
         return f"{l.name}: valid={l.valid} payload={type(l.payload).__name__ if l.payload else None}"
+    print(" ")
     print("TBS:")
     print("  ", s(tbs_ws_if))
     print("Scheduler:")
@@ -83,14 +84,47 @@ def dump_latches():
     print("  ", s(icache_decode_if))
     print(" ")
 
-def call_stages():
-    icache_stage.compute() # Icache getting MemResp
-    memc.compute()         # MemController servicing ICache req
-    icache_stage.compute() # ICache issuing new MemReq
-    group, warp, pc = scheduler_stage.compute() # Scheduler fetching from ICache
-    if icache_decode_if.valid:
+def call_stages(debug=False):
+    # compute order is called in reverse: 
+    # this is wrt. to cycle order: 0
+    # 1) ICache taking a response back from MemController for -2 cycle
+    # 2) MemController servicing requests from ICache for -1 cycle
+    # 3) ICache issuing new requests to MemController for 0 cycle
+    # 4) Warp Scheduler fetching instructions from ICache for 1 cycle
+    # 5) TBS is going BS for t > 1 cycle
+
+    # step #1: initiate computes to pass through dummy instructions
+    # until we reach the first real fetch from TBS
+
+    if (debug): 
+        dump_latches()
+
+    if icache_decode_if.valid: # should be ture if i didnt inject bs
         instr = icache_decode_if.pop()
-        print(f"NEXT STAGE Instruction: {instr}")
+        print(f"[dummy_DECODE] Received Instruction: {instr}")
+    else:
+        print("[dummy_DECODE] No instruction received.")
+
+    if (debug):
+        dump_latches()
+
+    icache_stage.compute() # Icache getting MemResp
+    
+    if (debug):
+        dump_latches()
+
+    memc.compute() # MemController servicing ICache req
+    if (debug):
+        dump_latches()
+
+    icache_stage.compute() # ICache issuing new MemReq
+    if (debug):
+        dump_latches()
+
+    group, warp, pc = scheduler_stage.compute() # Scheduler fetching from ICache
+    if (debug):
+        dump_latches()
+
     print(f"\nTBS fetched warp {warp} group {group} pc 0x{pc:X}\n")
 
 def cycle(cycles = scheduler_stage.warp_count):
@@ -98,7 +132,7 @@ def cycle(cycles = scheduler_stage.warp_count):
         group, warp, pc = scheduler_stage.compute()
     return group, warp, pc
 
-def test_fetch(LAT=10, START_PC=0, WARP_COUNT=6):
+def test_fetch(LAT=2, START_PC=0, WARP_COUNT=6):
     print("Scheduler to ICacheStage Requests Test")
 
     warp_id = 0
@@ -146,18 +180,29 @@ def test_fetch(LAT=10, START_PC=0, WARP_COUNT=6):
             "remaining": LAT
     }
 
+    dummy_dcache_mem_req_Instruction = {
+        "addr": 0,
+        "size": 4,
+        "uuid": 0,
+        "warp_id": 0,
+        "pc": 0,
+        "data": 0,
+        "rw_mode": "read",
+        "remaining": LAT
+    }
+
     mem_icache_resp_dummy_Instruction = Instruction(
         iid=0,
         pc=Bits(uint=0, length=32),
         intended_FSU=None,
         warp=0,
         warpGroup=None,
-
-    )
+        packet=Bits(uint=0, length=32
+        ))
 
     icache_decode_dummy_Instruction = Instruction(
         iid=0,
-        pc=Bits(uint=0, length=32),
+        pc=Bits(hex='ABABABAB', length=32),
         intended_FSU=None,
         warp=0,
         warpGroup=None,
@@ -168,13 +213,15 @@ def test_fetch(LAT=10, START_PC=0, WARP_COUNT=6):
     )
 
     # setup some bullshit at the beginning for the latches 
+    # this is initializing the latches for ONE cycle.
+
     tbs_ws_if.push({"warp_id": warp_id, 
                     "pc": START_PC + warp_id * 4})
     sched_icache_if.push(sched_icache_dummy_Instruction)
     icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
+    dummy_dcache_mem_req_if.push(dummy_dcache_mem_req_Instruction)
     mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
+    dummy_dcache_mem_resp_if.push(mem_icache_resp_dummy_Instruction)
     icache_decode_if.push(icache_decode_dummy_Instruction)
     
     # setup some bullshit for the forwarding IFS, i.e. NOTHING!!
@@ -183,55 +230,22 @@ def test_fetch(LAT=10, START_PC=0, WARP_COUNT=6):
     branch_scheduler_fwif.push(None)
     writeback_scheduler_fwif.push(None)
 
-    dump_latches()
-    # compute order is called in reverse: 
-    # this is wrt. to cycle order: 0
-    # 1) ICache taking a response back from MemController for -2 cycle
-    # 2) MemController servicing requests from ICache for -1 cycle
-    # 3) ICache issuing new requests to MemController for 0 cycle
-    # 4) Warp Scheduler fetching instructions from ICache for 1 cycle
-    # 5) TBS is going BS for t > 1 cycle
+    call_stages(debug=False)  # cycle -2
 
-    # step #1: initiate computes to pass through dummy instructions
-    # until we reach the first real fetch from TBS
-    call_stages()  # cycle -2
-    dump_latches()
-    tbs_ws_if.push({"warp_id": warp_id, 
-    "pc": START_PC + warp_id * 4})
-    call_stages()  # cycle -1
-    dump_latches()
-    tbs_ws_if.push({"warp_id": warp_id, 
-    "pc": START_PC + warp_id * 4})
-    call_stages()  # cycle 0 
-    dump_latches()
-    # tbs_ws_if.push({"warp_id": warp_id, 
-    # "pc": START_PC + warp_id * 4})
-    call_stages()  # cycle 1
+    input("---- Press Enter to continue to cycle #2 ----")
+    
+    call_stages(debug=False)  # cycle -1
 
-    icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
-    mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
-    icache_decode_if.push(icache_decode_dummy_Instruction)
-    dump_latches()
-
-    call_stages()  # cycle 1
-
-    icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
-    mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
-    icache_decode_if.push(icache_decode_dummy_Instruction)
-    dump_latches()
-
-    call_stages()  # cycle 1
-
-    icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
-    dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
-    mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
-    dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
-    icache_decode_if.push(icache_decode_dummy_Instruction)
-    dump_latches()
+    input("---- Press Enter to continue to cycle #3 ----")
+    
+    call_stages(debug=False) # cycle 0
+    # not pushing anything through the tbs_latch now..
+    # icache_mem_req_if.push(icache_mem_req_dummy_Instruction)
+    # dummy_dcache_mem_req_if.push(sched_icache_dummy_Instruction)
+    # mem_icache_resp_if.push(mem_icache_resp_dummy_Instruction)
+    # dummy_dcache_mem_resp_if.push(sched_icache_dummy_Instruction)
+    # icache_decode_if.push(icache_decode_dummy_Instruction)
+    # dump_latches()
 
 
 
