@@ -288,7 +288,8 @@ class CacheBank:
                         "size": BLOCK_SIZE_WORDS * 4,
                         "uuid": self.active_mshr.uuid,
                         "warp": self.bank_id,    # IMPORTANT: warp field stores the bank id
-                        "rw_mode": "read"
+                        "rw_mode": "read",
+                        "src": "dcache"
                     }
                     self.mem_req_if.push(request)   # Push the request to memory
                     self.waiting_for_mem = True     # Wait for memory flag goes high
@@ -335,7 +336,8 @@ class CacheBank:
                         "uuid": self.active_mshr.uuid,
                         "warp_id": self.bank_id,
                         "rw_mode": "write",
-                        "data": self.latched_victim.block
+                        "data": self.latched_victim.block,
+                        "src": "dcache"
                     }
                     self.mem_req_if.push(req_payload)
                     self.waiting_for_mem = True
@@ -402,7 +404,8 @@ class CacheBank:
                         "uuid": 0, # Dummy UUID for flush operations
                         "warp": self.bank_id, # Used for routing response back to this bank
                         "rw_mode": "write",
-                        "data": victim_frame.block # The data to write back
+                        "data": victim_frame.block, # The data to write back,
+                        "src": "dcache"
                     }
                     # --- END FIX ---
 
@@ -510,8 +513,13 @@ class LockupFreeCacheStage(Stage):
             resp = self.mem_resp_if.pop()
             if (resp):
                 target_bank_id = resp["warp"]
-                data = resp["data"]
-
+                if "data" in resp:
+                    data = resp["data"]
+                elif "status" in resp:
+                    data = resp["status"]
+                else:
+                    data = None
+                    
                 if (target_bank_id is not None) and (target_bank_id >= 0 and target_bank_id < NUM_BANKS):
                     self.banks[target_bank_id].complete_mem_access(data)
         

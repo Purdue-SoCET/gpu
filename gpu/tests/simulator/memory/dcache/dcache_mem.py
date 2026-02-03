@@ -9,13 +9,14 @@ import math
 
 # Adding path to the current directory to import files from another directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../../"))
+project_root = os.path.abspath(os.path.join(current_dir, "../../../../../"))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
 from gpu.simulator.src.mem.dcache import LockupFreeCacheStage
-from gpu_sim.cyclesim.src.mem.base import *
-from gpu_sim.cyclesim.src.mem.mem import MemStage, Mem
+from gpu.simulator.base_class import *
+from gpu.simulator.src.mem.Memory import Mem
+from gpu.simulator.src.mem.mem_controller import MemController
 
 BLOCK_SIZE_WORDS = 32       # 32 words per cache block
 
@@ -27,12 +28,16 @@ memReqdCacheIF = LatchIF(name="memReqdCacheIF")
 LSU_dCache_IF = LatchIF(name="LSU_dCache_IF")
 dCache_LSU_RESP_IF = ForwardingIF(name="DCache_LSU_Resp")
 
+# iCache interfaces
+ic_req = LatchIF("ICacheMemReqIF")
+ic_resp = LatchIF("ICacheMemRespIF")
+
 def make_test_pipeline():
     """
     This function connects creates the memory and dcache objects and connects the interfaces between them. It returns the objects and the interfaces (including the latches and "forwarding")
     """
     mem_backend = Mem(start_pc = 0x0000_0000,
-                      input_file = "/home/shay/a/zhan4650/Desktop/gpu_seniorDesign/gpu/gpu_sim/cyclesim/src/mem/test.bin",
+                      input_file = "/home/shay/a/zhan4650/Desktop/gpu_seniorDesign/gpu/gpu/tests/simulator/memory/dcache/test.bin",
                       fmt = "bin")
 
     dCache = LockupFreeCacheStage(name = "dCache",
@@ -42,13 +47,17 @@ def make_test_pipeline():
                                   mem_resp_if = memReqdCacheIF
                                   )
 
-    memStage = MemStage(name = "Memory",
-                        behind_latch = dCacheMemReqIF,
-                        ahead_latch = memReqdCacheIF,
-                        mem_backend = mem_backend
-                        )
+    memStage = MemController(name = "Memory",
+                             ic_req_latch = ic_req,
+                             dc_req_latch = dCacheMemReqIF,
+                             ic_serve_latch = ic_resp,
+                             dc_serve_latch = memReqdCacheIF,
+                             mem_backend = mem_backend,
+                             latency = 5,
+                             policy = "rr"
+                            )
     
-    for latch in [dCacheMemReqIF, memReqdCacheIF, LSU_dCache_IF]:
+    for latch in [dCacheMemReqIF, memReqdCacheIF, LSU_dCache_IF, ic_req, ic_resp]:
         latch.clear_all()
     
     return {
@@ -58,6 +67,8 @@ def make_test_pipeline():
             "dcache_mem": dCacheMemReqIF,
             "mem_dcache": memReqdCacheIF,
             "LSU_dCache": LSU_dCache_IF,
+            "icache_mem_req": ic_req,
+            "mem_icache_resp": ic_resp
         },
         "forward_if": LSU_dCache_IF.forward_if
     }
@@ -110,10 +121,10 @@ def print_latch_states(latches, cycle, before_after):
             
         if payload is not None:
             # Print the formatted version
-            print(f"  [{latch.name}] VALID: {format_payload(payload)}")
+            print(f"  [{name}] VALID: {format_payload(payload)}")
         else:
             # Optional: Comment out to hide empty latches
-            print(f"  [{latch.name}] Empty")
+            print(f"  [{name}] Empty")
 
 def run_sim (start, cycles):
     for cycle in range(start, start+cycles):
@@ -149,6 +160,12 @@ def run_sim (start, cycles):
                 print(f"[Cycle {cycle}] LSU Received: MISS COMPLETE (UUID: {uuid}) - Data is in cache")
             elif (msg_type == 'HIT_STALL'):
                 print(f"[Cycle {cycle}] LSU Received: HIT STALL")
+        
+        if ic_resp.valid:
+            i_response = ic_resp.pop()
+            print(f"[Cycle {cycle}] ICache Received: Data from Memory (UUID: {i_response.get('uuid')})")
+            print(f"Data: {i_response.get('data')}")
+
         print_latch_states(all_interfaces, cycle, "after")
     print(f"=== Test ended ===")
     return (cycles)
@@ -274,8 +291,8 @@ if __name__ == "__main__":
         run_sim(total_cycles, 1)
         total_cycles += 1
         lsu_latch.push({"addr_val": 0x0000_F080, "rw_mode": "read", "size": "word"})    # 1
-        run_sim(total_cycles, 67)
-        total_cycles += 67
+        run_sim(total_cycles, 85)
+        total_cycles += 85
         print_banks()
 
 
@@ -333,8 +350,8 @@ if __name__ == "__main__":
         run_sim(total_cycles, 1)
         total_cycles += 1
         lsu_latch.push({"addr_val": 0x0001_F180, "rw_mode": "write", "size": "word", "store_value": 0xAAAA_AAAA})    # Bank1
-        run_sim(total_cycles, 67)
-        total_cycles += 67
+        run_sim(total_cycles, 85)
+        total_cycles += 85
         print_banks()
     
 
@@ -393,8 +410,6 @@ if __name__ == "__main__":
         lsu_latch.push({"addr_val": 0x0000_F080, "rw_mode": "read", "size": "word"})    # 1
         run_sim(total_cycles, 1 + HIT_LATENCY)
         total_cycles += 1 + HIT_LATENCY
-        print_banks()
-
         print_banks()
 
 
@@ -607,10 +622,10 @@ if __name__ == "__main__":
         run_sim(total_cycles, 32)
         total_cycles += 32
         print_banks()
-
+    
 
     """
-    TEST CASE Seq_Hit_Miss
+    10. TEST CASE Seq_Hit_Miss
     """
     with open("10.Seq_Hit_Miss.txt", "w") as f:
         sys.stdout = f
@@ -629,9 +644,10 @@ if __name__ == "__main__":
         run_sim(total_cycles, 30)
         total_cycles += 30
         print_banks()
+    
 
     """
-    TEST CASE Seq_Hit_Hit
+    11. TEST CASE Seq_Hit_Hit
     """
     with open("11.Seq_Hit_Hit.txt", "w") as f:
         sys.stdout = f
@@ -644,62 +660,78 @@ if __name__ == "__main__":
         run_sim(total_cycles, 5)
         total_cycles += 5
         print_banks()
-
+    
 
     """
-    TEST CASE Read_Half_Word
+    12. TEST CASE Read_Half_Word
     """
     with open("12.Read_Half_Word.txt", "w") as f:
         sys.stdout = f
         test_case = "Read_Half_Word"
         print(f"Test Case: {test_case}")
-        lsu_latch.push({"addr_val": 0x0000E001, "rw_mode": "read", "size": "half"}) # Expecting 0x0000_0038
-        run_sim(total_cycles, 4)
-        total_cycles += 4
+        lsu_latch.push({"addr_val": 0x00000000, "rw_mode": "read", "size": "half"}) # Expecting 0x0000_01D8
+        run_sim(total_cycles, 3)
+        total_cycles += 3
         print_banks()
-
+    
 
     """
-    TEST CASE Read_Byte
+    13. TEST CASE Read_Byte
     """
     with open("13.Read_Byte.txt", "w") as f:
         sys.stdout = f
         test_case = "Read_Byte"
         print(f"Test Case: {test_case}")
-        lsu_latch.push({"addr_val": 0x00008001, "rw_mode": "read", "size": "half"}) # Expecting 0x0000_0020
+        lsu_latch.push({"addr_val": 0x00000000, "rw_mode": "read", "size": "byte"}) # Expecting 0x0000_00D8
         run_sim(total_cycles, 3)
         total_cycles += 3
         print_banks()
-
+    
 
     """
-    TEST CASE Write_Half_Word
+    14. TEST CASE Write_Half_Word
     """
     with open("14.Write_Half_Word.txt", "w") as f:
         sys.stdout = f
         test_case = "Write_Half_Word"
         print(f"Test Case: {test_case}")
-        lsu_latch.push({"addr_val": 0x0001E106, "rw_mode": "write", "size": "half", "store_value": 0xBEEF}) # Expecting 0xBEEF_7841
+        lsu_latch.push({"addr_val": 0x00000000, "rw_mode": "write", "size": "half", "store_value": 0xBEEF}) # Expecting 0x807D_BEEF
         run_sim(total_cycles, 3)
         total_cycles += 3
         print_banks()
-
     
+
     """
-    TEST CASE Write_Byte
+    15. TEST CASE Write_Byte
     """
     with open("15.Write_Byte.txt", "w") as f:
         sys.stdout = f
         test_case = "Write_Byte"
         print(f"Test Case: {test_case}")
-        lsu_latch.push({"addr_val": 0x0001E10A, "rw_mode": "write", "size": "half", "store_value": 0xBE}) # Expecting 0x00BE_7842
+        lsu_latch.push({"addr_val": 0x00000000, "rw_mode": "write", "size": "byte", "store_value": 0xBE}) # Expecting 0x807D_BEBE
         run_sim(total_cycles, 3)
         total_cycles += 3
         print_banks()
-
+    
+    """
+    17. TEST CASE: icache and dcache request simultaneously
+    Ensure that the cache can handle the backpressure from the memory controller
+    """
+    with open("17.icache_dcache.txt", "w") as f:
+        sys.stdout = f
+        test_case = "icache and dcache request simultaneously"
+        print(f"Test Case: {test_case}")
+        lsu_latch.push({"addr_val": 0x0000_1000, "rw_mode": "read", "size": "word"})
+        run_sim(total_cycles, 17)
+        total_cycles += 17
+        ic_req.push({"addr": 0x0000_8000, "size": 128, "uuid": 999, "warp": 0, "rw_mode": "read", "src": "icache"})
+        run_sim(total_cycles, 13)
+        total_cycles += 13
+        print_banks()
+        
 
     """
-    TEST CASE Halt
+    16. TEST CASE Halt
     Check that memsim.hex has been updated to the dirty values
     """
     with open("16.Halt.txt", "w") as f:
@@ -707,6 +739,6 @@ if __name__ == "__main__":
         test_case = "Halt"
         print(f"Test Case: {test_case}")
         lsu_latch.push({"halt": True}) # Expecting 0x00BE_7842
-        run_sim(total_cycles, 67)
-        total_cycles += 67
+        run_sim(total_cycles, 90)
+        total_cycles += 90
         print_banks()
