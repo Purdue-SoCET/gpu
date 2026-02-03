@@ -1,5 +1,3 @@
-"""
-
 from simulator.execute.arithmetic_functional_unit import IntUnitConfig, FpUnitConfig, SpecialUnitConfig
 from simulator.execute.stage import ExecuteStage
 from simulator.writeback.stage import WritebackStage, WritebackBufferConfig, RegisterFileConfig
@@ -21,6 +19,7 @@ from simulator.execute.stage import FunctionalUnitConfig
 
 # for the functional unit config, you can do this:
 functional_unit_config = FunctionalUnitConfig.get_default_config()
+fust = functional_unit_config.generate_fust_dict()
 
 # OR, you can do this (same outcome):
 int_config = IntUnitConfig.get_default_config()
@@ -30,13 +29,12 @@ functional_unit_config = FunctionalUnitConfig.get_config(
     int_config=int_config, fp_config=fp_config, special_config=special_config,
     int_unit_count=1, fp_unit_count=1, special_unit_count=1
 )
+fust = functional_unit_config.generate_fust_dict()
 
 # Step 2: Create Execute Stage
-ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config)
+ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config, fust=fust)
 
 # Step 3: Create buffer sizes and priorities for Writeback Buffer Config
-
-
 wb_buffer_config = WritebackBufferConfig.get_default_config()
 reg_file_config = RegisterFileConfig.get_default_config()
 
@@ -45,4 +43,3 @@ wb_stage = WritebackStage.create_pipeline_stage(wb_buffer_config=wb_buffer_confi
 
 if __name__ == "__main__":
     print("Execute Stage and Writeback Stage created successfully with the specified configurations.")
-"""

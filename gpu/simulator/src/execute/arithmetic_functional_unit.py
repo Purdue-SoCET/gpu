@@ -80,14 +80,19 @@ class ArithmeticFunctionalUnit(ABC):
         for subunit in self.subunits.values():
             subunit.compute()
 
-    def tick(self, behind_latch: LatchIF) -> List[Instruction]:
+    def tick(self, behind_latch: LatchIF, fust: dict[str, bool]) -> List[Instruction]:
         out_data = {}
-        for subunit in self.subunits.values():
+        for subunit_name, subunit in self.subunits.items():
             in_data = behind_latch.snoop()
             if isinstance(in_data, Instruction) and in_data.intended_FSU == subunit.name:
               out_data[subunit.ex_wb_interface.name] = subunit.tick(behind_latch)
             else:
               out_data[subunit.ex_wb_interface.name] = subunit.tick(None)
+            
+            # False: subunit is NOT full, and it is ready to accept new input
+            # True: subunit is full, and it is NOT ready to accept new input
+            # Therefore, we must negate the ready_out value to get the correct status for fust
+            fust[subunit_name] = not subunit.ready_out
 
         return out_data
 

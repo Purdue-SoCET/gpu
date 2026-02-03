@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from simulator.latch_forward_stage import Stage, LatchIF, Instruction
 from simulator.execute.arithmetic_functional_unit import IntUnitConfig, FpUnitConfig, SpecialUnitConfig, IntUnit, FpUnit, SpecialUnit
+from typing import Dict, Optional
 
 
 @dataclass
@@ -37,9 +38,25 @@ class FunctionalUnitConfig:
             fp_config=fp_config,
             special_config=special_config
         )
+    
+    def generate_fust_dict(self) -> Dict[str, bool]:
+        fust = {}
+        for i in range(self.int_unit_count):
+            int_unit = IntUnit(config=self.int_config, num=i)
+            for fsu_name in int_unit.subunits.keys():
+                fust[fsu_name] = True
+        for i in range(self.fp_unit_count):
+            fp_unit = FpUnit(config=self.fp_config, num=i)
+            for fsu_name in fp_unit.subunits.keys():
+                fust[fsu_name] = True
+        for i in range(self.special_unit_count):
+            special_unit = SpecialUnit(config=self.special_config, num=i)
+            for fsu_name in special_unit.subunits.keys():
+                fust[fsu_name] = True
+        return fust
 
 class ExecuteStage(Stage):
-    def __init__(self, config: FunctionalUnitConfig, fust: dict = None):
+    def __init__(self, config: FunctionalUnitConfig, fust: Dict[str, bool] = None):
         super().__init__(name="Execute_Stage")
       
         self.behind_latch = LatchIF(name="IS_EX_Latch")
@@ -84,7 +101,7 @@ class ExecuteStage(Stage):
             if isinstance(in_data, Instruction):
                 in_data.mark_stage_enter(self.name, self.cycle)
             
-            fu_out_data = fu.tick(self.behind_latch)
+            fu_out_data = fu.tick(self.behind_latch, fust=self.fust)
 
             new_in_data = self.behind_latch.snoop()
 
