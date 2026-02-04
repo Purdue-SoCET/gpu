@@ -42,7 +42,7 @@ class Ldst_Fu:
         if len(self.ldst_q) + 1 < self.ldst_q_size:
             instr = self.issue_if.pop()
             if instr != None:
-                self.ldst_q.append(instr)
+                self.ldst_q.append(pending_mem(instr))
 
         #apply backpressure if ldst_q full
         if len(self.ldst_q) == self.ldst_q_size:
@@ -56,13 +56,15 @@ class Ldst_Fu:
 
         #send req to cache if not waiting for response
         if self.outstanding == False and self.dcache_if.ready_for_push() and len(self.ldst_q) > 0:
-            self.dcache_if.push(
-                self.ldst_q[0].genReq()
-            )
-            self.outstanding = True
+            req = self.ldst_q[0].genReq()
+            if req:
+                self.dcache_if.push(
+                    self.ldst_q[0].genReq()
+                )
+                self.outstanding = True
 
         #move mem_req to wb_buffer if finished
-        if self.outstanding == False and self.ldst_q[0].readyWB():
+        if self.outstanding == False and len(self.ldst_q) > 0 and  self.ldst_q[0].readyWB():
             self.wb_buffer.append(self.ldst_q.pop(0))
 
         #handle dcache packet
@@ -75,15 +77,18 @@ class Ldst_Fu:
             mem_req = self.ldst_q[0]
             match payload.type:
                 case 'MISS_ACCEPTED':
+                    logger.info("Handling dcache MISS_ACCEPTED")
                     mem_req.parseMiss(payload)     
                     self.outstanding = False                   
                 case 'HIT_STALL':
                     pass
                 case 'MISS_COMPLETE':
+                    logger.info("Handling dcache MISS_COMPLETE")
                     mem_req.parseMshrHit(payload)
                 case 'FLUSH_COMPLETE':
                     pass
                 case 'HIT_COMPLETE':
+                    logger.info("Handling dcache HIT_COMPLETE")
                     mem_req.parseHit(payload)
                     self.outstanding = False
             
@@ -97,7 +102,7 @@ class pending_mem():
         self.finished_idx: List[int] = [0 for i in range(32)]
         self.write: bool
         self.mshr_idx: List[int] = [0 for i in range(32)]
-        self.addrs = []
+        self.addrs = [0 for i in range(32)]
 
         match self.instr.opcode:
             case I_Op.LW.value:
@@ -121,9 +126,17 @@ class pending_mem():
                 self.size = "byte"
         
         for i in range(32):
-            self.finished_idx[i] = 1-self.instr.predicate[i].int #iirc predicate=1'b1
-            self.addrs[i] = self.instr.rs1.int + self.instr.imm.int if self.instr.predicate[i] else None
-    
+            self.finished_idx[i] = 1-self.instr.predicate[i].uint #iirc predicate=1'b1
+            if self.write and self.instr.predicate[i].uint == 1:
+                self.addrs[i] = self.instr.rdat1[i].int + self.instr.rd
+            elif not self.write and self.instr.predicate[i].uint == 1:
+                self.addrs[i] = self.instr.rdat1[i].int + self.instr.rdat2[i].int
+        # print(list(map(lambda x: x.uint, self.instr.predicate)))
+        # print(self.addrs)
+        # print(self.write, self.size)
+
+        # print(list(map(lambda x: x.int, self.instr.rdat1)))
+
     def readyWB(self):
         return all(self.finished_idx)
     
@@ -136,8 +149,8 @@ class pending_mem():
                     size=self.size,
                     store_value=self.instr.rdat2[i].int
                 )
-        
         return None
+    
     def parseHit(self, payload):
         for i in range(32):
             if self.addrs[i] == payload.address:
@@ -145,7 +158,7 @@ class pending_mem():
 
                 #set wdat if instr is a read
                 if self.write == False:
-                    self.instr.wdat[i] = Bits(payload.data, 32)
+                    self.instr.wdat[i] = Bits(int=payload.data, length=32)
 
     
     def parseMshrHit(self, payload):
@@ -159,5 +172,8 @@ class pending_mem():
     def parseMiss(self, payload: dMemResponse):
         for i in range(32):
             if self.addrs[i] == payload.address:
-                self.mshr_idx[i] = 1
+                if self.write == False:
+                    self.mshr_idx[i] = 1
+                elif self.write == True:
+                    self.finished_idx[i] = 1
 

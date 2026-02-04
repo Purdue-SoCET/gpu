@@ -19,8 +19,8 @@ class TestLoadStoreUnit(unittest.TestCase):
                 rd=Bits(int=0, length=32),
                 rdat1 = [Bits(int=0, length=32) for i in range(32)],
                 rdat2 =  [Bits(int=0, length=32) for i in range(32)],
-                wdat = [None for i in range(32)],
-                pred = [Bits(bin='0b1', length=1) for i in range(32)]
+                wdat = [Bits(int=0, length=32) for i in range(32)],
+                pred = [Bits(uint=1, length=1) for i in range(32)]
             ) -> Instruction:
         instr = Instruction(pc=pc,
                             intended_FSU="ldst",
@@ -28,7 +28,6 @@ class TestLoadStoreUnit(unittest.TestCase):
                             warp_group_id=0,
                             rs1=Bits(int=0,length=32),
                             rs2=Bits(int=0,length=32),
-                            imm=Bits(int=0,length=32),
                             rd=rd,
                             wdat=wdat,
                             opcode=Bits(bin='0b0100000'),
@@ -36,57 +35,36 @@ class TestLoadStoreUnit(unittest.TestCase):
                             rdat2 = rdat2,
                             predicate=pred
                             )
-        # instr.pc = pc
-        # instr.intended_FU = "ldst_fu"
-        # instr.warp_id = 0
-        # instr.warp_group_id = 0
-
-        # instr.rs1 = 0
-        # instr.rs2 = 0
-        # instr.rd = rd
-        # instr.opcode = Bits(bin="0b010000", length=4)
-
-        # instr.rdat1 = rdat1
-        # instr.rdat2 = rdat2
-        # instr.wdat = wdat
         return instr
     
-    def genStore(self, pc: int, rd=0, rdat1 = [Bits(int=0, length=32) for i in range(32)], rdat2 =  [Bits(int=0, length=32) for i in range(32)]) -> Instruction:
-        instr = Instruction(pc=pc, intended_FU="ldst", warp_id=0, warp_group_id=0, rs1=0, rs2=0, rd=rd, opcode=Bits(bin='0b0110'))
-        instr.pc = pc
-        instr.intended_FU = "ldst_fu"
-        instr.warp_id = 0
-        instr.warp_group_id = 0
-
-        instr.rs1 = 0
-        instr.rs2 = 0
-        instr.rd = rd
-        instr.opcode = Bits(bin="0b0100", length=4)
-
-        instr.rdat1 = rdat1
-        instr.rdat2 = rdat2
-
+    def genStore(self,
+                pc: Bits,
+                rd=Bits(int=0, length=32),
+                rdat1 = [Bits(int=0, length=32) for i in range(32)],
+                rdat2 =  [Bits(int=0, length=32) for i in range(32)],
+                wdat = [Bits(int=0, length=32) for i in range(32)],
+                pred = [Bits(uint=1, length=1) for i in range(32)]
+            ) -> Instruction:
+        instr = Instruction(pc=pc,
+                            intended_FSU="ldst",
+                            warp_id=0,
+                            warp_group_id=0,
+                            rs1=Bits(int=0,length=32),
+                            rs2=Bits(int=0,length=32),
+                            rd=rd,
+                            wdat=wdat,
+                            opcode=Bits(bin='0b0110000'),
+                            rdat1 = rdat1,
+                            rdat2 = rdat2,
+                            predicate=pred
+                            )
         return instr
     
     def genHit(self, hex_data:str):
         dcache_req: dCacheRequest = self.dcache_if.pop()
-        logging.info(f"Servicing hit for addr: {dcache_req.addr_val}")
+        logging.info(f"Servicing hit for addr: {hex(dcache_req.addr_val)} with data: {int(hex_data, 16)}")
         assert type(dcache_req) == dCacheRequest
         self.dcache_fwd.push(
-            # dMemResponse(
-            #     data=[Bits(hex=hex_data, length=32) for i in range(32)],
-            #     pc=dcache_req.pc,
-            #     hit=True,
-            #     miss=False,
-            #     addr=dcache_req.addr
-            # )
-            # dMemResponse(
-            #             type = 'MISS_COMPLETE',
-            #             uuid = uuid,
-            #             req = req,
-            #             address = req.addr_val,
-            #             replay = True
-            # )
             dMemResponse(
                 type = 'HIT_COMPLETE',
                 hit = True,
@@ -96,45 +74,34 @@ class TestLoadStoreUnit(unittest.TestCase):
             )
         )
 
-    def mshrHit(self, mshr_data: tuple[int, Bits], hex_data:str):
-        pc = mshr_data[0]
-        addr = mshr_data[1]
-        logging.info(f"Servicing MSHR hit for addr: {addr} for pc {pc}")
+    def mshrHit(self, req):
+        logging.info(f"Servicing MSHR hit for addr: {req.addr_val}")
 
         self.dcache_fwd.push(
-            Dcache_Ldst_Payload(
-                data=[Bits(hex=hex_data, length=32) for i in range(32)],
-                pc=pc,
-                hit=True,
-                miss=False,
-                addr=addr
+            dMemResponse(
+                type = 'MISS_COMPLETE',
+                req = req,
+                address = req.addr_val,
+                replay = True
             )
         )
-
-    def intToHex(self, num) -> str:
-        return Bits(auto=num, length=32).hex()
     
-    def genMiss(self) -> tuple[int, Bits]:
-        dcache_req: Ldst_Dcache_Payload = self.dcache_if.pop()
-        logging.info(f"Servicing miss for addr: {dcache_req.addr} for pc {dcache_req.pc}")
+    def genMiss(self):
+        dcache_req: dCacheRequest = self.dcache_if.pop()
+        logging.info(f"Servicing miss for addr: {hex(dcache_req.addr_val)}")
 
-        if type(dcache_req) != Ldst_Dcache_Payload:
-            logger.warning("Err in genMiss")
-            logger.warning(f" {type(dcache_req)}")
-            logger.warning(f" {dcache_req}")
-            logger.warning(f" {self.dcache_if.valid}")
+        assert type(dcache_req) == dCacheRequest
 
-        assert type(dcache_req) == Ldst_Dcache_Payload
         self.dcache_fwd.push(
-            Dcache_Ldst_Payload(
-                data=None,
-                pc=dcache_req.pc,
-                hit=False,
-                miss=True,
-                addr=dcache_req.addr
+            dMemResponse(
+                type = 'MISS_ACCEPTED',
+                miss = True,
+                uuid = 0,
+                req = dcache_req,
+                address = dcache_req.addr_val,
+                is_secondary = False
             )
         )
-        return (dcache_req.pc, dcache_req.addr)
         
 
 
@@ -157,7 +124,6 @@ class TestLoadStoreUnit(unittest.TestCase):
         cls.ldst_fu.connect_interfaces(cls.dcache_if, cls.issue_if, cls.wb_if, cls.sched_if)
         cls.dcache_fwd.push(None)
 
-    @unittest.skip("Skipping while singleLoadMiss isn't working")
     def test_singleLoadHit(self):
         instr = self.genLoad(pc=0, rd=0, rdat1 = [Bits(int=i, length=32) for i in range(0, 0x400, 32)])
         self.issue_if.push(instr)
@@ -173,42 +139,67 @@ class TestLoadStoreUnit(unittest.TestCase):
 
         instr: Instruction = self.wb_if.pop()
         assert(type(instr) == Instruction)
+        # logger.info("test_singleLoadHit instr wdat:")
         for i, d in enumerate(instr.wdat):
-            assert(d == Bits(hex='0xAA', length=32))
+            # logger.info(f"  {i}, {d}")
+            assert(d == Bits(hex='0x000000AA', length=32))
+        
+        logger.info("test_singleLoadHit COMPLETE\n")
 
     # @unittest.skip("Skipping while singleLoadHit isn't working")
     def test_singleLoadMiss(self):
-        mshr_addrs = []
+        mshr_reqs = []
+        hit_addrs = []
         instr = self.genLoad(pc=0, rd=0, rdat1 = [Bits(int=i, length=32) for i in range(0, 0x400, 32)])
         self.issue_if.push(instr)
         self.ldst_fu.tick()
         
-        miss_count = 0
-        while miss_count < 8:
+
+        while not self.wb_if.valid:
             if self.dcache_if.valid:
-                mshr_addrs.append(self.genMiss()) # [tuple(int, int)]
-                miss_count += 1
+                req = self.dcache_if.payload
+                if req.addr_val not in hit_addrs:
+                    self.genMiss()
+                    mshr_reqs.append(req)
+                else:
+                    self.genHit('0xAA')
+            elif len(mshr_reqs) > 0:
+                req = mshr_reqs.pop(0)
+                self.mshrHit(req)
+                hit_addrs.append(req.addr_val)
             else:
                 self.dcache_fwd.push(None)
             self.ldst_fu.tick()
         
-        while len(mshr_addrs) > 0:
-            mshr_addr = mshr_addrs.pop(0)
-            self.mshrHit(mshr_addr, '0xAA')
-            self.ldst_fu.tick()
-        
-        self.dcache_fwd.push(None)
-        self.ldst_fu.tick()
-        
         assert(self.wb_if.valid)
         
+        # logger.info("test_singleLoadHit instr wdat:")
         for i, d in enumerate(instr.wdat):
-            assert(d == Bits(hex='0xAA', length=32))
+            # logger.info(f"  {i}, {d}, {Bits(hex='0xAA', length=32)}")
+            assert(d == Bits(hex='0x000000AA', length=32))
+        
+        logger.info("test_singleLoadMiss COMPLETE\n")
+
+    def test_singleStoreMiss(self):
+        instr = self.genStore(pc=0, rd=0, rdat1 = [Bits(int=i, length=32) for i in range(0, 0x400, 32)])
+        self.issue_if.push(instr)
+        self.ldst_fu.tick()
+
+        while not self.wb_if.valid:
+            if self.dcache_if.valid:
+                self.genMiss()
+            else:
+                self.dcache_fwd.push(None)
+            self.ldst_fu.tick()
+        
+        assert(self.wb_if.valid)
+        logger.info("test_singleStoreMiss COMPLETE\n")
     
+    # @unittest.skip("Skipping while singleLoadMiss isn't working")
     def test_singlePredHit(self):
         pred = [Bits(bin='0b0') for i in range(32)]
         pred[0] = Bits(bin='0b1')
-        instr = self.genLoad(pc=0, rd=0, rdat1 = [Bits(int=i, length=32) for i in range(0, 0x400, 32)], pred=pred)
+        instr = self.genLoad(pc=0, rd=0, rdat1 = [Bits(int=0, length=32) for i in range(32)], pred=pred)
         self.issue_if.push(instr)
         self.ldst_fu.tick()
 
@@ -222,6 +213,30 @@ class TestLoadStoreUnit(unittest.TestCase):
             self.ldst_fu.tick()
         
         assert(hit_count == 1)
+        assert(instr.wdat[0] == Bits(hex='0x000000AA'))
+        logger.info("test_singlePredHit COMPLETE\n")
+
+    def test_backpressure(self):
+        instrs = []
+        for i in range(5):
+            instrs.append(self.genLoad(pc=0, rd=0, rdat1 = [Bits(int=0, length=32) for i in range(32)]))
+        
+        wb_count = 0
+        while wb_count<5:
+            if not self.issue_if.forward_if.wait and len(instrs) > 0:
+                self.issue_if.push(instrs.pop())
+            
+            if self.dcache_if.valid:
+                self.genHit('0xAA')
+            else:
+                self.dcache_fwd.push(None)
+            
+            if self.wb_if.valid:
+                wb_count += 1
+                self.wb_if.pop()
+            self.ldst_fu.tick()
+        
+
 
 if __name__ == '__main__':
     unittest.main()

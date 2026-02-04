@@ -11,7 +11,7 @@ from collections import deque
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-from custom_enums_multi import Op
+from gpu_sim.cyclesim.custom_enums_multi import Op
 from bitstring import Bits
 
 @dataclass
@@ -205,7 +205,7 @@ class LatchIF:
         self.valid = False
     
     def __repr__(self) -> str: # idk if we need this or not
-        return (f"<{self.name} valid={self.valid} wait={self.wait} "
+        return (f"<{self.name} valid={self.valid}"
                 f"payload={self.payload!r}>")
     
 @dataclass
