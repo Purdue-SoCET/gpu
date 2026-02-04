@@ -69,6 +69,14 @@ icache_stage = ICacheStage(
     forward_ifs_write= {"ICache_scheduler_Ihit": icache_scheduler_fwif},
 )
 
+def dump_sched_fwifs():
+    print(" ")
+    print("Icache: ", icache_scheduler_fwif)
+    print("Decoder: ", decode_scheduler_fwif)
+    print("Issue: ", issue_scheduler_fwif)
+    print("Branch: ", branch_scheduler_fwif)
+    print("Writeback: ", writeback_scheduler_fwif)
+
 def dump_latches():
     def s(l): 
         return f"{l.name}: valid={l.valid} payload={type(l.payload).__name__ if l.payload else None}"
@@ -125,7 +133,7 @@ def call_stages(debug=False):
     inst = scheduler_stage.compute() # Scheduler fetching from ICache
     if (debug):
         dump_latches()
-
+        
     print(f"\nTBS fetched warp {inst.warp} group {inst.warpGroup} pc 0x{inst.pc:X}\n")
 
 def cycle(cycles = scheduler_stage.warp_count):
@@ -152,8 +160,9 @@ def test_fetch(LAT=2, START_PC=4, WARP_COUNT=6):
     # initialize the payload initially to what we expect,
     # or set some framework value for it in the pipeline
     # so it doesnt tweak out
-    
+
     icache_scheduler_fwif.payload = None
+    decode_scheduler_fwif.payload = None
     issue_scheduler_fwif.payload = None
     branch_scheduler_fwif.payload = None
     writeback_scheduler_fwif.payload = None
