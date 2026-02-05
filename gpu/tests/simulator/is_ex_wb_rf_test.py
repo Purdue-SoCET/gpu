@@ -111,7 +111,6 @@ if __name__ == "__main__":
         predicate=[Bits(uint=1, length=1) for _ in range(reg_file.threads_per_warp)],
     )
 
-
     # 3) Send into pipe
     issue_stage.compute(instr)
 
