@@ -64,6 +64,7 @@ def make_test_pipeline():
                             )
     
     lsu = Ldst_Fu(MSHR_BUFFER_LEN, 4)
+    lsu.connect_interfaces(dcache_if=LSU_dCache_IF, wb_if=lsu_wb_IF, sched_if=None)
     
     for latch in [dCacheMemReqIF, memReqdCacheIF, LSU_dCache_IF, ic_req, ic_resp, issue_lsu_IF, lsu_wb_IF]:
         latch.clear_all()
