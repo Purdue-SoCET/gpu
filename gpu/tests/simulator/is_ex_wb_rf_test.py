@@ -118,6 +118,7 @@ if __name__ == "__main__":
     for _ in range(1000):
         wb_stage.tick()
         ex_stage.tick()
+        ex_stage.compute()
         issue_stage.compute(None)
     
     print(instr)

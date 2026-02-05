@@ -147,7 +147,8 @@ class IssueStage(Stage):
         for fname in self.forward_ifs_write:
             self.forward_signals(fname, self.iBuff_Full_Flags)
 
-        self.ahead_latch.push(self.dispatched)
+        if len(self.dispatched) != 0:
+            self.ahead_latch.push(self.dispatched[0])
 
         return self.dispatched
 
