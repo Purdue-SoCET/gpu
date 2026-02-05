@@ -4,11 +4,12 @@ from simulator.writeback.stage import WritebackStage, WritebackBufferConfig, Reg
 from simulator.execute.stage import FunctionalUnitConfig
 from simulator.issue.regfile import RegisterFile
 
-"""
-Create Issue Stage and Register File
-"""
-reg_file = RegisterFile()
-
+# Issue Stage stuff
+from simulator.latch_forward_stage import ForwardingIF, Instruction
+from simulator.issue.stage import IssueStage
+from pathlib import Path
+from bitstring import Bits
+from gpu.common.custom_enums_multi import *
 
 """
 Create Execute and Writeback Stages
@@ -27,6 +28,8 @@ Create Execute and Writeback Stages
 # Step 1: Create Configurations using classmethods
     # I am using default configurations here, but custom configurations can be created as neede by following Step 0.
 
+reg_file = RegisterFile()
+
 # for the functional unit config, you can do this:
 functional_unit_config = FunctionalUnitConfig.get_default_config()
 fust = functional_unit_config.generate_fust_dict()
@@ -42,16 +45,82 @@ functional_unit_config = FunctionalUnitConfig.get_config(
 fust = functional_unit_config.generate_fust_dict()
 
 # Step 2: Create Execute Stage
-ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config, fust=fust)
+# ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config, fust=fust)
+ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config)
+ex_stage.fust = fust
 
 # Step 3: Create buffer sizes and priorities for Writeback Buffer Config
 wb_buffer_config = WritebackBufferConfig.get_default_config()
 wb_buffer_config.validate_config(fsu_names=list(fust.keys()))
-reg_file_config = RegisterFileConfig.get_config_from_reg_file(reg_file=reg_file)
+reg_file_config = RegisterFileConfig.get_config_from_reg_File(reg_file=reg_file)
 
 # Make sure ExecuteStage is created first before WritebackStage since it needs the ahead_latches from ExecuteStage
-wb_stage = WritebackStage.create_pipeline_stage(wb_buffer_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches)
+# wb_stage = WritebackStage.create_pipeline_stage(wb_buffer_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches)
+wb_stage = WritebackStage.create_pipeline_stage(wb_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches)
+
+"""
+Create Issue Stage and Register File
+    We need to create the RF, the FUST will be definied by execute as it knows which FUs it wants. 
+"""
+
+issue_stage = IssueStage(
+    fust_latency_cycles = 1,
+    regfile = reg_file,
+    fust = fust,
+    name = "IssueStage",
+    behind_latch = None,
+    ahead_latch = None,
+    forward_ifs_read = None,
+    forward_ifs_write = None
+)
 
 
 if __name__ == "__main__":
     print("Execute Stage and Writeback Stage created successfully with the specified configurations.")
+
+    # 1) Fill regfile with a known value in register 1, all threads
+    reg_file.write_warp_gran(
+        warp_id=0,
+        dest_operand=Bits(uint=1, length=32),
+        data=[Bits(uint=10, length=32) for _ in range(reg_file.threads_per_warp)]
+    )
+    # Confirm initial value
+    print("Initial reg[0][0][1]:", reg_file.regs[0][0][1])
+
+    # 2) Create an ADD instruction: reg2 = reg1 + reg1 (should be 20)
+    instr = Instruction(
+        pc=Bits(uint=0x0, length=32),
+        intended_FU="ALU_int_0",  # Use a valid FSU name from fust.keys()
+        warp_id=0,
+        warp_group_id=0,
+        rs1=Bits(uint=1, length=32),
+        rs2=Bits(uint=1, length=32),
+        rd=Bits(uint=2, length=32),
+        opcode=R_Op.ADD,  # Use enum for opcode
+        rdat1=0,
+        rdat2=0,
+        wdat=0,
+        predicate=[Bits(uint=1, length=1) for _ in range(reg_file.threads_per_warp)],
+        issued_cycle=None,
+        stage_entry={},
+        stage_exit={},
+        fu_entries=[],
+        wb_cycle=None,
+        target_bank=None
+    )
+
+    # 3) Send into pipe
+    WritebackStage.compute()
+    ExecuteStage.compute()
+    issue_stage.compute(Instruction[0])
+
+    # 4) Run for enough cycles to propagate through pipeline
+    for _ in range(10):
+        wb_stage.compute()
+        wb_stage.tick()
+        ex_stage.compute()
+        ex_stage.tick()
+        issue_stage.compute(None)
+
+    # 5) Check result in reg2 (should be 20 for all threads)
+    print("Result reg[0][0][2]:", [x.uint for x in reg_file.regs[0][0][2]])
