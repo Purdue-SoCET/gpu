@@ -146,7 +146,7 @@ def halt():
 def main():
     # output logging
     original_stdout = sys.stdout
-    with open("output.txt", "w") as f:
+    with open("RR_output.txt", "w") as f:
         sys.stdout = f
         init()
         uninterrupted_cycling()
