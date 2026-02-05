@@ -130,7 +130,7 @@ class WritebackStage(Stage):
         self.num_banks = rf_config.num_banks
         self.reg_file = reg_file
 
-        self.values_to_writeback = [None for _ in range(self.num_banks)]
+        self.values_to_writeback = {f"bank_{i}": None for i in range(self.num_banks)}
 
 
         functional_units_list = []
@@ -150,7 +150,8 @@ class WritebackStage(Stage):
         # Writeback stage tick logic to be implemented
         self._write_to_reg_file()
         self.values_to_writeback = self.wb_buffer.tick()
-        if len(self.values_to_writeback) != self.num_banks:
+        if self.values_to_writeback is not None and len(self.values_to_writeback) != self.num_banks:
+            print(f"Error: Expected {self.num_banks} banks, but got {len(self.values_to_writeback)}")
             raise ValueError("Number of banks in values_to_writeback does not match num_banks.")
 
 
@@ -162,13 +163,16 @@ class WritebackStage(Stage):
         raise NotImplementedError()
 
     def _write_to_reg_file(self):
-        for instr in self.values_to_writeback:
+        if self.values_to_writeback is None:
+            return
+        
+        for _, instr in self.values_to_writeback.items():
             if instr is not None:
                 for i in range(32):
                     if instr.predicate[i].bin == 0b0:
                         continue
                     self.reg_file.write_thread_gran(
-                        addr=instr.rd,
+                        dest_operand=instr.rd,
                         data=instr.wdat[i],
                         thread_id=i,
                         warp_id=instr.warp_id

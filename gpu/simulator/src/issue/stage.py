@@ -149,6 +149,7 @@ class IssueStage(Stage):
 
         if len(self.dispatched) != 0:
             self.ahead_latch.push(self.dispatched[0])
+            self.dispatched = []
 
         return self.dispatched
 

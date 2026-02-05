@@ -41,7 +41,7 @@ class WritebackBuffer:
         elif buffer_config.count_scheme == WritebackBufferCount.BUFFER_PER_BANK:
             self.count_scheme = WritebackBufferCount.BUFFER_PER_BANK
             self.num_buffers = regfile_config.num_banks
-            self.buffer_names = [f"bank_{i}_buffer" for i in range(self.num_buffers)]
+            self.buffer_names = [f"bank_{i}" for i in range(self.num_buffers)]
         else:
             raise ValueError("Invalid WritebackBufferCount configuration")
         
@@ -83,6 +83,7 @@ class WritebackBuffer:
             self.fsu_priority = buffer_config.fsu_priority
 
         self.behind_latches = behind_latches
+        self.num_regfile_banks = regfile_config.num_banks
         
         # Initialize performance counters for each buffer
         self.perf_counts = {name: PerfCount(name=name) for name in self.buffer_names}
@@ -144,10 +145,10 @@ class WritebackBuffer:
         # For BUFFER_PER_BANK, buffer_names are bank names
         # For BUFFER_PER_FSU, buffer_names are FSU names, but we need to return data keyed by bank
         # Determine number of banks from regfile config
-        num_banks = 2  # Default, should match regfile_config.num_banks
+        num_banks = self.num_regfile_banks  # Default, should match regfile_config.num_banks
         
-        buffers_to_writeback = {}
-        values_to_writeback = [None for _ in range(num_banks)]
+        buffers_to_writeback = {f"bank_{i}": None for i in range(num_banks)}
+        values_to_writeback = {f"bank_{i}": None for i in range(num_banks)}  # Initialize for each bank
         
         # Track metrics for each buffer
         stores_this_cycle = {name: False for name in self.buffer_names}
@@ -156,27 +157,28 @@ class WritebackBuffer:
         # Select buffers to writeback - for PER_BANK we iterate banks, for PER_FSU we iterate FSUs
         if self.count_scheme == WritebackBufferCount.BUFFER_PER_BANK:
             # Directly select one buffer per bank
-            for bank_index in self.buffer_names:
+            for bank_name in self.buffer_names:
+                bank_name = f"bank_{i}"
                 match self.primary_policy:
                     case WritebackBufferPolicy.AGE_PRIORITY:
-                        buffers_to_writeback[bank_index] = self._find_age_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] = self._find_age_priority_for_writeback(target_bank=bank_name)
                     case WritebackBufferPolicy.CAPACITY_PRIORITY:
-                        buffers_to_writeback[bank_index] =  self._find_capacity_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] =  self._find_capacity_priority_for_writeback(target_bank=bank_name)
                     case WritebackBufferPolicy.FSU_PRIORITY:
-                        buffers_to_writeback[bank_index] = self._find_fsu_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] = self._find_fsu_priority_for_writeback(target_bank=bank_name)
                     case _:
                         raise NotImplementedError(f"WritebackBufferPolicy {self.primary_policy} needs tick() implementation")
         else:  # BUFFER_PER_FSU
             # Select best buffer for each target bank
             for i in range(num_banks):
-                bank_index = i
+                bank_name = f"bank_{i}"
                 match self.primary_policy:
                     case WritebackBufferPolicy.AGE_PRIORITY:
-                        buffers_to_writeback[bank_index] = self._find_age_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] = self._find_age_priority_for_writeback(target_bank=bank_name)
                     case WritebackBufferPolicy.CAPACITY_PRIORITY:
-                        buffers_to_writeback[bank_index] =  self._find_capacity_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] =  self._find_capacity_priority_for_writeback(target_bank=bank_name)
                     case WritebackBufferPolicy.FSU_PRIORITY:
-                        buffers_to_writeback[bank_index] = self._find_fsu_priority_for_writeback(target_bank=bank_index)
+                        buffers_to_writeback[bank_name] = self._find_fsu_priority_for_writeback(target_bank=bank_name)
                     case _:
                         raise NotImplementedError(f"WritebackBufferPolicy {self.primary_policy} needs tick() implementation")
 
@@ -184,7 +186,7 @@ class WritebackBuffer:
             if buffer is not None:
                 values_to_writeback[bank] = buffer.pop()
                 for i in range(32):
-                  values_to_writeback[bank].wdat[i] = None if values_to_writeback[bank].predicate[i].bin == '0' else values_to_writeback[bank].wdat[i]
+                    values_to_writeback[bank].wdat[i] = None if values_to_writeback[bank].predicate[i].bin == '0' else values_to_writeback[bank].wdat[i]
                 # Track writeback for the source buffer
                 for buf_name, buf in self.buffers.items():
                     if buf is buffer:
@@ -202,7 +204,7 @@ class WritebackBuffer:
                 # No active threads, just pop to clear latch
                 latch.pop()
                 continue
-            if in_data is not None and in_data.target_bank is not None:
+            if in_data is not None:
                 match self.count_scheme:
                     case WritebackBufferCount.BUFFER_PER_FSU:
                         target_buffer = in_data.intended_FU
