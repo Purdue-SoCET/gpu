@@ -5,7 +5,7 @@ from simulator.execute.stage import FunctionalUnitConfig
 from simulator.issue.regfile import RegisterFile
 
 # Issue Stage stuff
-from simulator.latch_forward_stage import ForwardingIF, Instruction
+from simulator.latch_forward_stage import ForwardingIF, Instruction, LatchIF
 from simulator.issue.stage import IssueStage
 from pathlib import Path
 from bitstring import Bits
@@ -44,8 +44,10 @@ functional_unit_config = FunctionalUnitConfig.get_config(
 )
 fust = functional_unit_config.generate_fust_dict()
 
-# Step 2: Create Execute Stage
+# Step 2: Create Execute Stage (With Latch and Forwarding Interfaces)
+is_ex_latch = LatchIF(name="IS_EX_Latch")
 ex_stage = ExecuteStage.create_pipeline_stage(functional_unit_config=functional_unit_config, fust=fust)
+ex_stage.behind_latch = is_ex_latch
 
 # Step 3: Create buffer sizes and priorities for Writeback Buffer Config
 wb_buffer_config = WritebackBufferConfig.get_default_config()
@@ -54,8 +56,14 @@ reg_file_config = RegisterFileConfig.get_config_from_reg_File(reg_file=reg_file)
 
 # Make sure ExecuteStage is created first before WritebackStage since it needs the ahead_latches from ExecuteStage
 # wb_stage = WritebackStage.create_pipeline_stage(wb_buffer_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches)
-wb_stage = WritebackStage.create_pipeline_stage(wb_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches, reg_file=reg_file, fsu_names=list(fust.keys()))
-
+# wb_stage = WritebackStage.create_pipeline_stage(wb_config=wb_buffer_config, rf_config=reg_file_config, ex_stage_ahead_latches=ex_stage.ahead_latches, reg_file=reg_file, fsu_names=list(fust.keys()))
+wb_stage = WritebackStage.create_pipeline_stage(
+    wb_config=wb_buffer_config,
+    rf_config=reg_file_config,
+    ex_stage_ahead_latches=ex_stage.ahead_latches,
+    reg_file=reg_file,
+    fsu_names=list(fust.keys())
+)
 """
 Create Issue Stage and Register File
     We need to create the RF, the FUST will be definied by execute as it knows which FUs it wants. 
@@ -67,7 +75,7 @@ issue_stage = IssueStage(
     fust = fust,
     name = "IssueStage",
     behind_latch = None,
-    ahead_latch = None,
+    ahead_latch = is_ex_latch,
     forward_ifs_read = None,
     forward_ifs_write = None
 )
@@ -103,16 +111,13 @@ if __name__ == "__main__":
         predicate=[Bits(uint=1, length=1) for _ in range(reg_file.threads_per_warp)],
     )
 
+
     # 3) Send into pipe
-    wb_stage.compute() # can be commented out, no compute logic in WB stage
-    ex_stage.compute()
     issue_stage.compute(instr)
 
     # 4) Run for enough cycles to propagate through pipeline
-    for _ in range(10):
-        wb_stage.compute() # can be commented out, no compute logic in WB stage
+    for _ in range(1000):
         wb_stage.tick()
-        ex_stage.compute()
         ex_stage.tick()
         issue_stage.compute(None)
     

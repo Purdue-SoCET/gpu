@@ -151,6 +151,7 @@ class ForwardingIF:
     def __repr__(self) -> str:
         return (f"<{self.name} valid={self.valid} wait={self.wait} "
             f"payload={self.payload!r}>")
+            
 
 @dataclass
 class LatchIF:
