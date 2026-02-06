@@ -311,6 +311,8 @@ class LatchIF:
     def clear_all(self) -> None:
         self.payload = None
         self.valid = False
+        if self.forward_if: #Also clear any attatched forwarding IF
+            self.forward_if.push(None)
     
     def __repr__(self) -> str: # idk if we need this or not
         return (f"<{self.name} valid={self.valid} wait={self.wait} "

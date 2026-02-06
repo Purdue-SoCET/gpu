@@ -22,17 +22,20 @@ from gpu.simulator.src.mem.ld_st import Ldst_Fu
 BLOCK_SIZE_WORDS = 32       # 32 words per cache block
 
 # Cache to memory interface
-dCacheMemReqIF = LatchIF(name="dCacheMemReqIF")
-memReqdCacheIF = LatchIF(name="memReqdCacheIF")
+dcache_mem_req_IF = LatchIF(name="dcache_mem_req_IF")
+mem_dcache_req_IF = LatchIF(name="mem_dcache_req_IF")
 
 # LSU to Cache interface
-LSU_dCache_IF = LatchIF(name="LSU_dCache_IF")
-dCache_LSU_RESP_IF = ForwardingIF(name="DCache_LSU_Resp")
+lsu_dcache_IF = LatchIF(name="lsu_dcacheIF")
+dcache_lsu_resp_IF = ForwardingIF(name="dcache_lsu_resp_IF")
+lsu_dcache_IF.forward_if = dcache_lsu_resp_IF # LSU uses lsu_dcache_if.forward_if to access dcache_lsu_if if, can change if needed
 
 # LSU, issue, scheduling and writeback interfaces
 issue_lsu_IF = LatchIF("issue_lsu_IF")          # Issue --> LSU
+lsu_issue_resp_IF = ForwardingIF(name="lsu_issue_resp_IF")
 lsu_wb_IF = LatchIF("lsu_wb_IF")                # LSU --> Writeback Buffer
-lsu_sched_IF = ForwardingIF("lsu_resp_IF")      # LSU --> Scheduling (for memory stalls)
+lsu_sched_IF = ForwardingIF(name="lsu_resp_IF")      # LSU --> Scheduling (for memory stalls)
+lsu_wb_IF.forward_if = lsu_sched_IF
 
 # iCache interfaces
 ic_req = LatchIF("ICacheMemReqIF")
@@ -42,31 +45,32 @@ def make_test_pipeline():
     """
     This function connects creates the memory and dcache objects and connects the interfaces between them. It returns the objects and the interfaces (including the latches and "forwarding")
     """
+    print(f"Initializing mem_backend with input file: {os.path.join(project_root, "gpu/tests/simulator/memory/dcache/test.bin")}")
     mem_backend = Mem(start_pc = 0x0000_0000,
-                      input_file = "/home/shay/a/zhan4650/Desktop/gpu_seniorDesign/gpu/gpu/tests/simulator/memory/dcache/test.bin",
+                      input_file = os.path.join(project_root, "gpu/tests/simulator/memory/dcache/test.bin"),
                       fmt = "bin")
 
     dCache = LockupFreeCacheStage(name = "dCache",
-                                  behind_latch = LSU_dCache_IF,    # Change this to dummy
-                                  forward_ifs_write = {"DCache_LSU_Resp": dCache_LSU_RESP_IF},   # Change this to dummy
-                                  mem_req_if = dCacheMemReqIF,
-                                  mem_resp_if = memReqdCacheIF
+                                  behind_latch = lsu_dcache_IF,    # Change this to dummy
+                                  forward_ifs_write = {"DCache_LSU_Resp": dcache_lsu_resp_IF},   # Change this to dummy
+                                  mem_req_if = dcache_mem_req_IF,
+                                  mem_resp_if = mem_dcache_req_IF
                                   )
 
     memStage = MemController(name = "Memory",
                              ic_req_latch = ic_req,
-                             dc_req_latch = dCacheMemReqIF,
+                             dc_req_latch = dcache_mem_req_IF,
                              ic_serve_latch = ic_resp,
-                             dc_serve_latch = memReqdCacheIF,
+                             dc_serve_latch = mem_dcache_req_IF,
                              mem_backend = mem_backend,
                              latency = 5,
                              policy = "rr"
                             )
     
     lsu = Ldst_Fu(MSHR_BUFFER_LEN, 4)
-    lsu.connect_interfaces(dcache_if=LSU_dCache_IF, wb_if=lsu_wb_IF, sched_if=None)
+    lsu.connect_interfaces(dcache_if=lsu_dcache_IF, wb_if=lsu_wb_IF, sched_if=None)
     
-    for latch in [dCacheMemReqIF, memReqdCacheIF, LSU_dCache_IF, ic_req, ic_resp, issue_lsu_IF, lsu_wb_IF]:
+    for latch in [dcache_mem_req_IF, mem_dcache_req_IF, lsu_dcache_IF, ic_req, ic_resp, issue_lsu_IF, lsu_wb_IF]:
         latch.clear_all()
     
     return {
@@ -74,13 +78,13 @@ def make_test_pipeline():
         "mem": memStage,
         "lsu": lsu,
         "latches": {
-            "dcache_mem": dCacheMemReqIF,
-            "mem_dcache": memReqdCacheIF,
-            "LSU_dCache": LSU_dCache_IF,
+            "dcache_mem": dcache_mem_req_IF,
+            "mem_dcache": mem_dcache_req_IF,
+            "LSU_dCache": lsu_dcache_IF,
             "icache_mem_req": ic_req,
             "mem_icache_resp": ic_resp
         },
-        "lsu_dcache_forward_if": LSU_dCache_IF.forward_if,
+        "lsu_dcache_forward_if": lsu_dcache_IF.forward_if,
         "lsu_sched_forward_if": lsu_sched_IF
     }
 
@@ -137,19 +141,23 @@ def print_latch_states(latches, cycle, before_after):
             # Optional: Comment out to hide empty latches
             print(f"  [{name}] Empty")
 
-def run_sim (start, cycles):
+def run_sim (start, cycles, instrs: List[Instruction]):
+    '''
+    Runs simulation by feeding LSQ each instr in instrs
+
+    TODO: make run until lsq recieves flush confirmation
+    '''
     for cycle in range(start, start+cycles):
         print(f"\n=== Cycle {cycle} ===")
 
         dcache_input = None
         cache_ready = (not dCache.stall)
-        if cache_ready:
-            if lsu_latch.valid:
-                dcache_input = lsu_latch.pop()
+        if cache_ready and lsu_dcache_IF.valid:
+            dcache_input = lsu_dcache_IF.pop()
 
         dCache.compute(input_data = dcache_input)
         mem.compute(input_data = None)
-        response = resp_if.pop()
+        response = dcache_lsu_resp_IF.pop()
         if response:
             msg_type = response.type
             uuid = response.uuid
@@ -243,5 +251,7 @@ if __name__ == "__main__":
     sim = make_test_pipeline()
     mem = sim["mem"]
     dCache = sim["dCache"]
-    lsu = sim
+    lsu = sim["lsu"]
+    all_interfaces = sim["latches"]
+    run_sim(0, 5, None) 
 
