@@ -64,6 +64,8 @@ def make_test_pipeline():
                             )
     
     lsu = Ldst_Fu(MSHR_BUFFER_LEN, 4)
+    # Connecting the interfaces to the LSU
+    lsu.connect_interfaces(LSU_dCache_IF, issue_lsu_IF, lsu_wb_IF, lsu_sched_IF)
     
     for latch in [dCacheMemReqIF, memReqdCacheIF, LSU_dCache_IF, ic_req, ic_resp, issue_lsu_IF, lsu_wb_IF]:
         latch.clear_all()
@@ -77,7 +79,9 @@ def make_test_pipeline():
             "mem_dcache": memReqdCacheIF,
             "LSU_dCache": LSU_dCache_IF,
             "icache_mem_req": ic_req,
-            "mem_icache_resp": ic_resp
+            "mem_icache_resp": ic_resp,
+            "issue_lsu_req": issue_lsu_IF,
+            "lsu_wb_resp": lsu_wb_IF
         },
         "lsu_dcache_forward_if": LSU_dCache_IF.forward_if,
         "lsu_sched_forward_if": lsu_sched_IF
@@ -142,12 +146,17 @@ def run_sim (start, cycles):
 
         dcache_input = None
         cache_ready = (not dCache.stall)
-        if cache_ready:
-            if lsu_latch.valid:
-                dcache_input = lsu_latch.pop()
+        lsu_input = None
+        lsu_ready = (not issue_lsu_IF.forward_if.wait)
 
-        dCache.compute(input_data = dcache_input)
+        if (lsu_ready):
+            if issue_lsu_IF.valid:
+                lsu_input = issue_lsu_IF.pop()
+
+
         mem.compute(input_data = None)
+        dCache.compute(input_data = dcache_input)
+        lsu.compute(input_data = None)
         response = resp_if.pop()
         if response:
             msg_type = response.type
@@ -242,5 +251,11 @@ if __name__ == "__main__":
     sim = make_test_pipeline()
     mem = sim["mem"]
     dCache = sim["dCache"]
-    lsu = sim
+    lsu = sim["lsu"]
+    all_interfaces = sim["latches"]
+    all_interfaces["DCache_LSU_Resp"] = sim["lsu_dcache_forward_if"]
+    all_interfaces["lsu_resp_IF"] = sim["lsu_sched_forward_if"]
+    issue_lsu_IF = sim["latches"]["issue_lsu_req"]
+
+    
 
