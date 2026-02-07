@@ -6,7 +6,6 @@ from enum import Enum
 from pathlib import Path
 gpu_root = Path(__file__).resolve().parents[3]
 sys.path.append(str(gpu_root))
-print("here", gpu_root)
 from simulator.base_class import DecodeType, Instruction, WarpState, WarpGroup, ForwardingIF, LatchIF, Stage
 
 class SchedulerStage(Stage):
@@ -30,11 +29,14 @@ class SchedulerStage(Stage):
         # debug
         self.issued_warp_last_cycle: Optional[int] = None
 
+        # global stop fetching instructions from the cache
+        self.stop_fetching = False
         # could add perf counters
     
     # figuring out which warps can/cant issue
     def collision(self):
         # pop from decode, issue, writeback
+        icache_ctrl = self.forward_ifs_read["ICache_Scheduler"].pop()
         decode_ctrl = self.forward_ifs_read["Decode_Scheduler"].pop()
         issue_ctrl = self.forward_ifs_read["Issue_Scheduler"].pop()
         branch_ctrl = self.forward_ifs_read["Branch_Scheduler"].pop()
@@ -42,29 +44,43 @@ class SchedulerStage(Stage):
 
         # if im getting my odd warp EOP out of my decode
         print("[SchedulerStage] Warp Issue Check, Decode Control:", decode_ctrl)
+        print("[SchedulerStage] Warp Issue Check, ICache Control:", icache_ctrl)
         print("[SchedulerStage] Warp Issue Check, Issue Control:", issue_ctrl)
         print("[SchedulerStage] Warp Issue Check, Branch Control:", branch_ctrl)
         print("[SchedulerStage] Warp Issue Check, Writeback Control:", writeback_ctrl)
-        if (decode_ctrl is None and issue_ctrl is None and branch_ctrl is None and writeback_ctrl is None):
-            print("[SchedulerStage] No control signals received, bubble.")
+    
+        if (icache_ctrl is None and decode_ctrl is None and issue_ctrl is None and branch_ctrl is None and writeback_ctrl is None):
+            print("[SchedulerStage] No control signals received...skipping collision detection.")
             return
+        
+        if icache_ctrl is False:
+            print("[Scheduler] Stalling pipeline due to Icache miss!")
+            # method 1: some global stop signal
+            self.stop_fetching = True
+            # should I return back or evaulate the warps based on the current conditions nonetheless?
+            # i should NOT because I still want to evaluate everything based on the current state 
+            # return
+        else:
+            self.stop_fetching = False
 
          # if im getting my odd warp EOP out of my decode
+        if decode_ctrl is not None:
+            print(decode_ctrl)
+            if decode_ctrl["type"] == DecodeType.EOP and decode_ctrl["warp_id"] % 2:
+                self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.STALL
+                self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
+                self.warp_table[decode_ctrl["warp_id"] // 2].finished_packet = True
+            
+            # if im getting my odd warp barrier out of my decode
+            #IGNORING THIS FOR NOW AS WE ARE NOT EVALUATING FOR BARRIER SUPPORT THUS FAR.
+            # elif decode_ctrl["type"] == DecodeType.Barrier and decode_ctrl["warp_id"] % 2:
+            #     self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.BARRIER
+            #     self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
+            #     self.at_barrier += 1
 
-        if decode_ctrl["type"] == DecodeType.EOP and decode_ctrl["warp_id"] % 2:
-            self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.STALL
-            self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
-            self.warp_table[decode_ctrl["warp_id"] // 2].finished_packet = True
-        
-        # if im getting my odd warp barrier out of my decode
-        elif decode_ctrl["type"] == DecodeType.Barrier and decode_ctrl["warp_id"] % 2:
-            self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.BARRIER
-            self.warp_table[decode_ctrl["warp_id"] // 2].pc = decode_ctrl["pc"]
-            self.at_barrier += 1
-
-        # if im getting my odd warp halt out of my decode
-        elif decode_ctrl["type"] == DecodeType.halt and decode_ctrl["warp_id"] % 2:
-            self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.HALT
+            # if im getting my odd warp halt out of my decode
+            elif decode_ctrl["type"] == DecodeType.halt and decode_ctrl["warp_id"] % 2:
+                self.warp_table[decode_ctrl["warp_id"] // 2].state = WarpState.HALT
 
         # # clear barrier MIGHT NOT NEED BARRIER ANYMORE
         # if self.at_barrier == self.num_groups:
@@ -79,15 +95,16 @@ class SchedulerStage(Stage):
             self.warp_table[branch_ctrl["warp_group"]].pc = branch_ctrl["dest"]
         
         # check all my things in the issue
-        for ibuffer in range(len(issue_ctrl)):
-            if self.warp_table[ibuffer].state != WarpState.BARRIER and self.warp_table[ibuffer].state != WarpState.HALT:
-                # i buffer full, stop issuing
-                if issue_ctrl[ibuffer] == 1:
-                    self.warp_table[ibuffer].state = WarpState.STALL
-                # i buffer opens up but you can only issue to it if you haven't finished scheduling ur current packet
-                else:
-                    if not self.warp_table[ibuffer].finished_packet:
-                        self.warp_table[ibuffer].state = WarpState.READY
+        if issue_ctrl is not None:
+            for ibuffer in range(len(issue_ctrl)):
+                if self.warp_table[ibuffer].state != WarpState.BARRIER and self.warp_table[ibuffer].state != WarpState.HALT:
+                    # i buffer full, stop issuing
+                    if issue_ctrl[ibuffer] == 1:
+                        self.warp_table[ibuffer].state = WarpState.STALL
+                    # i buffer opens up but you can only issue to it if you haven't finished scheduling ur current packet
+                    else:
+                        if not self.warp_table[ibuffer].finished_packet:
+                            self.warp_table[ibuffer].state = WarpState.READY
 
         # decrement my in flight counter and go back to ready
         if writeback_ctrl is not None:
@@ -95,6 +112,20 @@ class SchedulerStage(Stage):
             if self.warp_table[writeback_ctrl["warp_group"]].in_flight == 0 and self.warp_table[writeback_ctrl["warp_group"]].state != WarpState.BARRIER and self.warp_table[writeback_ctrl["warp_group"]].state != WarpState.HALT:
                 self.warp_table[writeback_ctrl["warp_group"]].state = WarpState.READY
                 self.warp_table[writeback_ctrl["warp_group"]].finished_packet = False
+
+    def make_instruction(self, group, warp, pc):
+        inst = Instruction(pc=pc, warp_id=warp, warp_group_id=group)
+        return inst 
+    
+    def push_instruction(self, inst):
+        if self.ahead_latch.ready_for_push:
+            print(f"[Scheduler] Pushing inst to ahead latch")
+            self.ahead_latch.push(inst)
+            return True
+        else:
+            print(f"[Scheduler] STALLED by ahead latch")
+            return False 
+        
 
     def dummy_tbs_pop(self):
         if not self.behind_latch.valid:
@@ -106,235 +137,254 @@ class SchedulerStage(Stage):
     # PURE ROUND ROBIN RIGHT NOW, NEED TO FIND THE RR_INDEX
     def compute(self):
         # waiting for ihit
+
+        #check the behind latch if its attached and whether it has something in it
+        if self.behind_latch is not None:
+            tbs_req = self.behind_latch.pop()
+            if tbs_req is not None:
+                print(f"[{self.name}] Received from TBS: {tbs_req}")
+                warp_group = self.warp_table[tbs_req["warp_id"] // 2]
+                warp_group.pc = tbs_req["pc"]
+            else:
+                print(f"[{self.name}] No request from TBS this cycle!")
+
+        # check the forwarding interfaces from other stages for forwarded information
         for fwd_if in self.forward_ifs_read.values():
             if fwd_if.wait:
                 print(f"[{self.name}] Stalled due to wait from next stage")
                 # same issue here with nontype and ints
-                return 10000, 10000, 10000
+                inst =  self.make_instruction(1000,1000,1000)
+                return self.push_instruction(inst)
+                
+        # ADDING LATCH FROM TBS CHECK BEFORE FWD IF CHECKS
 
-        # detecting stalls
-        req = self.dummy_tbs_pop()
-        
         self.collision()
 
-        # round robin scheduling loop
-        for tries in range(self.num_groups):
-            warp_group = self.warp_table[self.rr_index]
+        if self.stop_fetching == False:
+            # round robin scheduling loop
+            for tries in range(self.num_groups):
+                warp_group = self.warp_table[self.rr_index]
 
-            # we can issue this warp group DONT 
-            if warp_group.state == WarpState.READY:
-                # increment in flight counter
-                warp_group.in_flight += 1
+                # we can issue this warp group DONT 
+                if warp_group.state == WarpState.READY:
+                    # increment in flight counter
+                    warp_group.in_flight += 1
 
-                # if the last issue for the group was odd DONT INCREASE RR_INDEX
-                if not warp_group.last_issue_even:
-                    warp_group.last_issue_even = True
-                    return warp_group.group_id, warp_group.group_id * 2, warp_group.pc # EVEN WARP INSTRUCTION
+                    # if the last issue for the group was odd DONT INCREASE RR_INDEX
+                    if not warp_group.last_issue_even:
+                        warp_group.last_issue_even = True
+                        inst = self.make_instruction(warp_group.group_id, (warp_group.group_id * 2), warp_group.pc)
+                        self.push_instruction(inst)
+                        return inst 
+                    
+                    # if the last issue for the group was even MOVE ON WITH RR_INDEX
+                    if warp_group.last_issue_even:
+                        self.rr_index = (self.rr_index + 1) % self.num_groups
+                        current_pc = warp_group.pc
+                        warp_group.pc += 4
+                        warp_group.last_issue_even = False
+                        inst = self.make_instruction(warp_group.group_id, (warp_group.group_id * 2) + 1, current_pc)
+                        self.push_instruction(inst)
+                        return inst
                 
-                # if the last issue for the group was even MOVE ON WITH RR_INDEX
-                if warp_group.last_issue_even:
+                # we cant issue this warp group
+                else:
                     self.rr_index = (self.rr_index + 1) % self.num_groups
-                    current_pc = warp_group.pc
-                    warp_group.pc += 4
-                    warp_group.last_issue_even = False
-                    return warp_group.group_id, (warp_group.group_id * 2) + 1, current_pc # ODD WARP INSTRUCTION
             
-            # we cant issue this warp group
-            else:
-                self.rr_index = (self.rr_index + 1) % self.num_groups
-        
         # every warp is unable to issue (syntax with type of thing returned --> needs to go back to none)
-        return 10000, 10000, 10000
+        inst = self.make_instruction(1000,1000,1000)
+        # self.push_instruction(inst)
+        return inst
     
-if __name__ == "__main__":
-    # forward interfaces into warp scheduler
-    decode_scheduler = ForwardingIF(name = "decode_forward_if")
-    issue_scheduler = ForwardingIF(name = "issue_forward_if")
-    branch_scheduler = ForwardingIF(name = "branch_forward_if")
-    writeback_scheduler = ForwardingIF(name = "writeback_forward_if")
+# if __name__ == "__main__":
+#     # forward interfaces into warp scheduler
+#     decode_scheduler = ForwardingIF(name = "decode_forward_if")
+#     issue_scheduler = ForwardingIF(name = "issue_forward_if")
+#     branch_scheduler = ForwardingIF(name = "branch_forward_if")
+#     writeback_scheduler = ForwardingIF(name = "writeback_forward_if")
 
-    scheduler_stage = SchedulerStage(
-        name = "Schedule",
-        behind_latch = None, # needs instantiation from TBS
-        ahead_latch = None, # needs instantiation to i$
-        forward_ifs_read = {"Decode_Scheduler": decode_scheduler, "Issue_Scheduler": issue_scheduler, "Branch_Scheduler": branch_scheduler, "Writeback_Scheduler": writeback_scheduler},
-        forward_ifs_write = None,
-        start_pc = 0,
-        warp_count = 6
-    )
+#     scheduler_stage = SchedulerStage(
+#         name = "Schedule",
+#         behind_latch = None, # needs instantiation from TBS
+#         ahead_latch = None, # needs instantiation to i$
+#         forward_ifs_read = {"Decode_Scheduler": decode_scheduler, "Issue_Scheduler": issue_scheduler, "Branch_Scheduler": branch_scheduler, "Writeback_Scheduler": writeback_scheduler},
+#         forward_ifs_write = None,
+#         start_pc = 0,
+#         warp_count = 6
+#     )
 
-    #### CHECKING TO SEE WARPS ALL AT INITIAL STATE ####
-    # initialization check
-    print("INITIAL CHECK OF STATES")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
-    #### END OF INITIALIZATION CHECK ####
+#     #### CHECKING TO SEE WARPS ALL AT INITIAL STATE ####
+#     # initialization check
+#     print("INITIAL CHECK OF STATES")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     #### END OF INITIALIZATION CHECK ####
 
-    #### CYCLING SCHEDULER FOR 2 * (NUMBER OF WARPS) AND CHECKING PC AND STATES EACH TIME (NORAL OPERATION)
-    decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
-    issue_scheduler.push([0] * scheduler_stage.num_groups)
-    branch_scheduler.push(None)
-    writeback_scheduler.push(None)
+#     #### CYCLING SCHEDULER FOR 2 * (NUMBER OF WARPS) AND CHECKING PC AND STATES EACH TIME (NORAL OPERATION)
+#     decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
+#     issue_scheduler.push([0] * scheduler_stage.num_groups)
+#     branch_scheduler.push(None)
+#     writeback_scheduler.push(None)
 
-    for i in range(scheduler_stage.warp_count):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"group: {group}, warp: {warp}, current pc: {pc}, in fight: {scheduler_stage.warp_table[group].in_flight}\n")
-    #### END OF CHECKING SCHEDULER CYCLING (NORMAL OPERATION)
+#     for i in range(scheduler_stage.warp_count):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"group: {group}, warp: {warp}, current pc: {pc}, in fight: {scheduler_stage.warp_table[group].in_flight}\n")
+#     #### END OF CHECKING SCHEDULER CYCLING (NORMAL OPERATION)
 
-    #### END OF A PACKET FOR A GROUP
-    print(f"\nEOP for group 0 -------\n")
+#     #### END OF A PACKET FOR A GROUP
+#     print(f"\nEOP for group 0 -------\n")
 
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.EOP, "warp_id": 0, "pc": scheduler_stage.warp_table[group].pc})
+#     decode_scheduler.push({"type": DecodeType.EOP, "warp_id": 0, "pc": scheduler_stage.warp_table[group].pc})
     
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.EOP, "warp_id": 1, "pc": scheduler_stage.warp_table[group].pc})
+#     decode_scheduler.push({"type": DecodeType.EOP, "warp_id": 1, "pc": scheduler_stage.warp_table[group].pc})
 
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n") 
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n") 
 
-    print(f"CURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
-    #### END OF EOP TEST
+#     print(f"CURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     #### END OF EOP TEST
 
-    #### RESETTING
-    decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
-    ####
+#     #### RESETTING
+#     decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": 0})
+#     ####
 
-    print(f"cycling through warps a couple times")
-    for i in range(7):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
+#     print(f"cycling through warps a couple times")
+#     for i in range(7):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}, next_pc: {scheduler_stage.warp_table[group].pc}\n")
 
-    print(f"\n\nWriteback writes back both instructions for group 0 -------\n")
-    for i in range(4):
-        writeback_scheduler.push({"warp_group": 0})
+#     print(f"\n\nWriteback writes back both instructions for group 0 -------\n")
+#     for i in range(4):
+#         writeback_scheduler.push({"warp_group": 0})
 
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}")
-        print(f"group: {0}, current pc: {scheduler_stage.warp_table[0].pc}, in flight: {scheduler_stage.warp_table[0].in_flight}\n")
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}")
+#         print(f"group: {0}, current pc: {scheduler_stage.warp_table[0].pc}, in flight: {scheduler_stage.warp_table[0].in_flight}\n")
 
-    print(f"CURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"CURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
-    writeback_scheduler.push(None)
+#     writeback_scheduler.push(None)
 
-    print(f"\n\nI Buffer begins to fill up for groups 1 and 2 --------\n")
-    issue_scheduler.push([0, 1, 1])
+#     print(f"\n\nI Buffer begins to fill up for groups 1 and 2 --------\n")
+#     issue_scheduler.push([0, 1, 1])
 
-    for i in range(4):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     for i in range(4):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"CURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"CURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
-    issue_scheduler.push([0, 0, 0])
+#     issue_scheduler.push([0, 0, 0])
 
-    print(f"\n\n Testing all warps hit barrier -----------\n")
-    for i in range(4):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     print(f"\n\n Testing all warps hit barrier -----------\n")
+#     for i in range(4):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"CURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"CURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
-    print(f"barrier at pc = 24\n")
-    for i in range(2):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")     
+#     print(f"barrier at pc = 24\n")
+#     for i in range(2):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")     
 
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
     
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
     
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
-    scheduler_stage.compute()
-    print("STALL DIE TO BARRIER->NOBODY SCHEDULED")
+#     decode_scheduler.push({"type": DecodeType.Barrier, "warp_id": warp, "pc": scheduler_stage.warp_table[group].pc})
+#     scheduler_stage.compute()
+#     print("STALL DIE TO BARRIER->NOBODY SCHEDULED")
 
-    print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
-    decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": scheduler_stage.warp_table[0].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.MOP, "warp_id": 0, "pc": scheduler_stage.warp_table[0].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\ngroups at barrier: {scheduler_stage.at_barrier}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 
 
-    print(f"\n\nBranch unit gives new pc for group 2 --------\n")
-    branch_scheduler.push({"warp_group": 2, "dest": 100})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
-    print(f"Branch happens now->pc set to 100")
+#     print(f"\n\nBranch unit gives new pc for group 2 --------\n")
+#     branch_scheduler.push({"warp_group": 2, "dest": 100})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     print(f"Branch happens now->pc set to 100")
 
-    branch_scheduler.push(None)
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     branch_scheduler.push(None)
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    for i in range(8):
-        group, warp, pc = scheduler_stage.compute()
-        print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     for i in range(8):
+#         group, warp, pc = scheduler_stage.compute()
+#         print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"HALT CASE ------- \n\n")
-    decode_scheduler.push({"type": DecodeType.halt, "warp_id": 0, "pc":scheduler_stage.warp_table[0].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     print(f"HALT CASE ------- \n\n")
+#     decode_scheduler.push({"type": DecodeType.halt, "warp_id": 0, "pc":scheduler_stage.warp_table[0].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    decode_scheduler.push({"type": DecodeType.halt, "warp_id": 1, "pc":scheduler_stage.warp_table[0].pc})
-    group, warp, pc = scheduler_stage.compute()
-    print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
+#     decode_scheduler.push({"type": DecodeType.halt, "warp_id": 1, "pc":scheduler_stage.warp_table[0].pc})
+#     group, warp, pc = scheduler_stage.compute()
+#     print(f"IN SCHEDULER: group: {group}, warp: {warp}, current pc: {pc}\n")
 
-    print(f"\nCURRENT STATES ===\n")
-    for warp_group in scheduler_stage.warp_table:
-        print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
+#     print(f"\nCURRENT STATES ===\n")
+#     for warp_group in scheduler_stage.warp_table:
+#         print(f"warp group: {warp_group.group_id} || pc: {warp_group.pc} || state: {warp_group.state}\n")
 

@@ -61,6 +61,7 @@ class Mem:
     def read(self, addr: int, size: int = 4) -> Bits:
         byte_addr = int(addr)
         data = bytes(self.memory.get(byte_addr + i, 0) & 0xFF for i in range(int(size)))
+        print("[Memory] Returning data:", data)
         return Bits(bytes=data)
 
     def write(self, addr: int, data: Bits, bytes_t: int):

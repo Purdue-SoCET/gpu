@@ -1,15 +1,17 @@
-from base import ForwardingIF, LatchIF, Stage, Instruction, ICacheEntry, MemRequest, FetchRequest, DecodeType
-from Memory import Mem
+
+import sys
+from pathlib import Path
+
+parent_dir = Path(__file__).resolve().parents[3]
+
+sys.path.append(str(parent_dir))
+from simulator.base_class import ForwardingIF, LatchIF, Stage, PredRequest, DecodeType
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-from collections import deque
-from datetime import datetime
-from isa_packets import ISA_PACKETS
-from bitstring import Bits
-from custom_enums_multi import (
-    Op,
-    R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, C_Op, J_Op, P_Op, H_Op,
-)
+from bitstring import Bits 
+
+from common.custom_enums_multi import Instr_Type, R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, J_Op, P_Op, H_Op, C_Op
+from common.custom_enums import Op
 
 global_cycle = 0
 
@@ -58,7 +60,7 @@ def decode_opcode(bits7: Bits):
     Map a 7-bit opcode Bits to an Op enum (preferred) or the
     underlying R_Op/I_Op/... enum as a fallback.
     """
-    for enum_cls in (R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, C_Op, J_Op, P_Op, H_Op):
+    for enum_cls in (R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, J_Op, P_Op, H_Op):
         for member in enum_cls:
             if member.value == bits7:
                 # Prefer unified Op enum if it has the same name
@@ -93,136 +95,226 @@ class DecodeStage(Stage):
             forward_ifs_write=forward_ifs_write or {},
         )
         self.prf = prf  # predicate register file reference
-        self.last_fwd_value = {}
+        self.inflight: list[PredRequest] = [] # current request being serviced by the pred reg file
+    
+    def _age_inflight(self) -> None:
+        for req in self.inflight:
+            req.remaining -= 1
 
-    def compute(self, input_data: Optional[Any] = None):
-        """Decode the raw instruction word coming from behind_latch."""
-
-        # If no input_data given, read from behind latch
-        if input_data is None:
-            if not self.behind_latch.valid:
-                return None
-            inst = self.behind_latch.snoop()
+    def _push_instruction_to_next_stage(self, inst):
+        if self.ahead_latch.ready_for_push:
+            self.ahead_latch.push(inst)
         else:
-            inst = input_data
-
-        # ---------------------------------------------------------
-        # 1) Stall if any forwarding IF is explicitly in wait state
-        # ---------------------------------------------------------
-        for name, fwd_if in self.forward_ifs_read.items():
-            if fwd_if.wait:
-                print(f"[{self.name}] Stalled due to wait from next stage.")
-                return None
-
-        # ---------------------------------------------------------
-        # 2) EDGE-TRIGGER forwarding consumption
-        # ---------------------------------------------------------
-        fwd_values = {}
-        for name, f in self.forward_ifs_read.items():
-            payload = f.payload
-            if payload is None or payload == self.last_fwd_value.get(name):
-                continue
-            fwd_values[name] = payload
-            self.last_fwd_value[name] = payload
-
-        # ---------------------------------------------------------
-        # 3) Decode MUST stall on ihit=False (but only on new event)
-        # ---------------------------------------------------------
-        if "ICache_Decode_Ihit" in fwd_values and fwd_values["ICache_Decode_Ihit"] is False:
-            print(f"[{self.name}] Waiting on ICache ihit signal...")
-            return None
-
-        # ---------------------------------------------------------
-        # 4) Extract the raw instruction bits
-        # ---------------------------------------------------------
-        #print(f"[{self.name}] Decoding instruction raw {inst}")
-        raw_field = inst.packet 
-        print(raw_field)
-
-        if isinstance(raw_field, Bits):
-            raw = raw_field.uint & 0xFFFFFFFF
-        elif isinstance(raw_field, bytes):
-            raw = int.from_bytes(raw_field[:4], byteorder="little")
-        elif isinstance(raw_field, int):
-            raw = raw_field & 0xFFFFFFFF
-        elif isinstance(raw_field, str):
-            raw = int(raw_field, 0) & 0xFFFFFFFF
-        elif isinstance(raw_field, list):
-            raw = sum((byte & 0xFF) << (8 * i)
-                      for i, byte in enumerate(raw_field[:4])) & 0xFFFFFFFF
-        else:
-            raise TypeError(f"[{self.name}] Unsupported packet type: {type(raw_field)}")
-
-        # ---------------------------------------------------------
-        # 5) Bitfield decode
-        # ---------------------------------------------------------
-        opcode7 = raw & 0x7F
-        rd      = (raw >> 7)  & 0x3F
-        rs1     = (raw >> 13) & 0x3F
-        mid6    = (raw >> 19) & 0x3F
-        pred    = (raw >> 25) & 0x1F
-
-        opcode_bits = Bits(uint=opcode7, length=7)
-        inst.opcode = decode_opcode(opcode_bits)
-        inst.intended_FSU = classify_fust_unit(inst.opcode)
+            print("[Decode] Stalling due to ahead latch not being ready.")
         
-        # Match Instruction type: registers as Bits
-        inst.rs1 = Bits(uint=rs1,  length=6)
-        inst.rs2 = Bits(uint=mid6, length=6)
-        inst.rd  = Bits(uint=rd,   length=6)
+        return
+    
+    def _lookup_after_one_cycle_for_predication(self):
+
+        for req in list(self.inflight):
+            if req.remaining > 0:
+                continue
+            
+            mostly_filled_instruction = getattr(req, "inst", None)
+
+            pred_mask = self.prf.read_predicate(
+                prf_rd_en=req.rd_en,
+                prf_rd_wsel=req.rd_wrp_sel,
+                prf_rd_psel=req.rd_pred_sel,
+                prf_neg=req.prf_neg
+            )
+
+            if pred_mask is None:
+                pred_mask = [True] * 32
+
+            mostly_filled_instruction.predicate = pred_mask
+
+            self._push_instruction_to_next_stage(mostly_filled_instruction)
+
+            return
+
+    def _service_the_incoming_instruction(self) -> None:
+        
+        inst = None
+        if not self.behind_latch.valid:
+                print("[Decode] Received nothing valid yet!")
+                return inst
+        else:
+            # pop whatever you need..
+            inst = self.behind_latch.pop()
+        
+        if self.forward_ifs_read["ICache_Decode_Ihit"].pop() is False:
+            print("[Decode] Stalling Pipeline due to Icache Miss")
+            return inst 
+
+
+        raw_bits = inst.packet
+        print(f"[Decode]: Received Raw Instruction Data: {raw_bits}")
+        raw = raw_bits.uint
+
+        # bits [6:0]
+        opcode7 = raw & 0x7F
+        opcode_bits = Bits(uint=opcode7, length=7)
+
+        # ---- decode opcode: match against enum members that store full 7-bit values ----
+        decoded_opcode = None
+        decoded_family = None  # will hold the enum class (R_Op, I_Op, ...)
+
+        # c_op is left cooked for now
+        for enum_cls in (R_Op, I_Op, F_Op, C_Op, S_Op, B_Op, U_Op, J_Op, P_Op, H_Op):
+            for member in enum_cls:
+                if member.value == opcode_bits:
+                    decoded_opcode = member
+                    decoded_family = enum_cls
+                    break
+            if decoded_opcode is not None:
+                break
+
+        inst.opcode = decoded_opcode
+
+        # Optional debug:
+        # print(f"[Decode] opcode7=0x{opcode7:02x} opcode_bits={opcode_bits.bin} op={decoded_opcode} fam={decoded_family}")
+
+        # ---- derive instruction type from upper 4 bits (optional, but useful) ----
+        upper4_bits = Bits(uint=((opcode7 >> 3) & 0xF), length=4)
+        instr_type = None
+        for t in Instr_Type:
+            # MultiValueEnum: membership check works with `in t.values`
+            if upper4_bits in t.values:
+                instr_type = t
+                break
 
         # ---------------------------------------------------------
-        # 5b) Control-type (halt/EOP/MOP/Barrier)
+        # Field presence rules
+        # Use decoded_family (most direct) or instr_type (equivalent).
         # ---------------------------------------------------------
+
+        is_R = (decoded_family is R_Op)
+        is_I = (decoded_family is I_Op)
+        is_F = (decoded_family is F_Op)
+        is_S = (decoded_family is S_Op)
+        is_B = (decoded_family is B_Op)
+        is_U = (decoded_family is U_Op)
+        is_C = (decoded_family is C_Op)
+        is_J = (decoded_family is J_Op)
+        is_P = (decoded_family is P_Op)
+        is_H = (decoded_family is H_Op)
+
+        # rd present for R/I/F/U/J/P (per your intent)
+        if is_R or is_I or is_F or is_U or is_J or is_P:
+            inst.rd = Bits(uint=((raw >> 7) & 0x3F), length=6)
+
+            # Your special P-type rule using LOWER 3 bits of opcode7
+            opcode_lower = opcode7 & 0x7
+            if is_P and opcode_lower != 0x0:
+                inst.rd = None
+        else:
+            inst.rd = None
+
+        # rs1 present for R/I/F/S/B/P
+        if is_R or is_I or is_F or is_S or is_B or is_P:
+            inst.rs1 = (raw >> 13) & 0x3F
+
+            opcode_lower = opcode7 & 0x7
+            if is_P and opcode_lower not in (0x4, 0x5):
+                inst.rs1 = None
+        else:
+            inst.rs1 = None
+
+        # rs2 present for R/S/B
+        if is_R or is_S or is_B:
+            inst.rs2 = (raw >> 19) & 0x3F
+        else:
+            inst.rs2 = None
+
+        # src_pred present for R/I/F/S/U/B (your original intent)
+        if is_R or is_I or is_F or is_S or is_U or is_B:
+            inst.src_pred = (raw >> 25) & 0x1F
+        else:
+            inst.src_pred = None
+
+        # dest_pred for B-type (FIXED '=')
+        if is_B:
+            inst.dest_pred = (raw >> 7) & 0x3F
+        else:
+            inst.dest_pred = None
+
+        # imm extraction: keep your rules but fix Bits constructors
+        if is_I:
+            inst.imm = Bits(uint=((raw >> 19) & 0x3F), length=6).int
+        elif is_S:
+            inst.imm = Bits(uint=((raw >> 7) & 0x3F), length=6).int
+        elif is_U:
+            inst.imm = Bits(uint=((raw >> 13) & 0xFFF), length=12).int
+        elif is_J:
+            imm = (raw >> 13) & 0xFFF
+            inst.imm = Bits(uint=imm, length=17).int
+        elif is_P:
+            inst.imm = Bits(uint=((raw >> 13) & 0x7FF), length=11).int
+        elif is_H:
+            inst.imm = Bits(uint=0xFFFFFF, length=23).int
+        else:
+            inst.imm = None
+
+        inst.intended_FU = classify_fust_unit(inst.opcode)
+
         EOP_bit     = (raw >> 31) & 0x1
-        MOP_bit     = (raw >> 30) & 0x1
-        Barrier_bit = (raw >> 29) & 0x1
+        EOS_bit     = (raw >> 30) & 0x1
 
-        inst.type = None
-        if opcode_bits == H_Op.HALT.value or inst.opcode == getattr(Op, "HALT", None):
-            inst.type = DecodeType.halt
+        packet_marker = None
+        if decoded_opcode == H_Op:
+            packet_marker = DecodeType.halt
         elif EOP_bit == 1:
-            inst.type = DecodeType.EOP
-        elif MOP_bit == 1:
-            inst.type = DecodeType.MOP
-        elif Barrier_bit == 1:
-            inst.type = DecodeType.Barrier
+            packet_marker = DecodeType.EOP
+        elif EOS_bit == 1:
+            packet_marker = DecodeType.EOS
 
-        # ---------------------------------------------------------
+        # the  forwarding happens immediately
+        if packet_marker is not None:
+            push_pkt = {"type": packet_marker, "warp_id": inst.warp_id, "pc": inst.pc}
+            self.forward_ifs_write["Decode_Scheduler_Pckt"].push(push_pkt)
+        # -------------------------------------------------------
         # 6) Predicate register file lookup
         # ---------------------------------------------------------
-        pred_mask = self.prf.read_predicate(
-            prf_rd_en=1,
-            prf_rd_wsel=inst.warp,
-            prf_rd_psel=pred,
-            prf_neg=0
-        )
+        # indexed by thread id in the teal card?
+        pred_req = None
+        if inst.src_pred is not None:
+            pred_req = PredRequest(
+                rd_en=1,
+                rd_wrp_sel=inst.warp_id,
+                rd_pred_sel=inst.src_pred,
+                prf_neg=0,
+                remaining=1
+            )
+            pred_req.inst = inst
+            self.inflight.append(pred_req)
 
-        if pred_mask is None:
-            pred_mask = [True] * 32
+            print("[Decode] Initiating one-cycle PRF lookup")
+            return 1 #return back here so its serviced in the next cycle
+        else:
+            # this should only be true for te following instruction types:
+            # For J,P,H types
+            # nothing is appended then, so we can just push to the next stage and keep on going
+            self._push_instruction_to_next_stage(inst)
+            return 0
+    
+    def compute(self, input_data: Optional[Any] = None):
+        """Decode the raw instruction word coming from behind_latch."""
+        # this isnt that crazy it just sets the counter down on the request
 
-        inst.pred = [Bits(uint=int(b), length=1) for b in pred_mask]
+        # so the fuckass counter decreases I guess
+        self._age_inflight()   
 
-        # ---------------------------------------------------------
-        # 7) Optional write-forwarding to next stage
-        # ---------------------------------------------------------
-        for name, f in self.forward_ifs_write.items():
-            f.push({
-                "decoded": True,
-                "type": inst.type,
-                "pc": inst.pc,
-                "warp": inst.warp,
-            })
+        # then try to service an inflight request to the pred reg file as needed
+        # pred delay tells us whether the instruction was pushed to the next stage or not
+        # if its serviced (0), then we by pass the look after one cycle stage
+        pred_delay = self._service_the_incoming_instruction()
+        
+        if (pred_delay):
+            self._lookup_after_one_cycle_for_predication()
 
-        # ---------------------------------------------------------
-        # 8) Bookkeeping + send result forward
-        # ---------------------------------------------------------
-        global global_cycle
-        inst.stage_entry.setdefault("Decode", global_cycle)
-        inst.stage_exit["Decode"] = global_cycle + 1
-        inst.issued_cycle = inst.issued_cycle or global_cycle
 
-        self.behind_latch.pop()
-        self.send_output(inst)
-        print(f"[{self.name}] Decoded instruction. Updated inst packed is {inst}")
-        return inst
+       
+        
+        
+
