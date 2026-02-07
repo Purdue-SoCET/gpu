@@ -4,7 +4,7 @@ from pathlib import Path
 gpu_sim_root = Path(__file__).resolve().parents[3]
 sys.path.append(str(gpu_sim_root))
 
-from simulator.base_class import LatchIF
+from simulator.base_class import LatchIF, Instruction, ForwardingIF, Stage, DecodeType
 from common.custom_enums_multi import Instr_Type, R_Op, I_Op, F_Op, S_Op, B_Op, U_Op, J_Op, P_Op, H_Op
 from common.custom_enums import Op
 from simulator.src.scheduler.scheduler import SchedulerStage
@@ -34,7 +34,7 @@ branch_scheduler_fwif = ForwardingIF(name = "branch_forward_if")
 writeback_scheduler_fwif = ForwardingIF(name = "Writeback_forward_if")
 
 mem = Mem(
-    start_pc=0x1000,
+    start_pc=0x0,
     input_file="/home/shay/a/sing1018/Desktop/SoCET_GPU_FuncSim/gpu/gpu/tests/simulator/frontend/test.bin",
     fmt="bin",
 )
@@ -67,8 +67,8 @@ icache_stage = ICacheStage(
     mem_req_if=icache_mem_req_if,
     mem_resp_if=mem_icache_resp_if,
     cache_config={"cache_size": 32 * 1024, 
-                    "block_size": 64, 
-                    "associativity": 4},
+                    "block_size": 4, 
+                    "associativity": 1},
     forward_ifs_write= {"ICache_scheduler_Ihit": icache_scheduler_fwif},
 )
 
@@ -82,9 +82,10 @@ decode_stage = DecodeStage(
     behind_latch=icache_decode_if,
     ahead_latch=decode_issue_if,
     prf=prf,
-    forward_ifs_read=None,
-    forward_ifs_write={"D"}
+    forward_ifs_read={"ICache_Decode_Ihit": icache_scheduler_fwif},
+    forward_ifs_write={"Decode_Scheduler_Pckt": decode_scheduler_fwif}
 )
+
 def dump_sched_fwifs():
     print(" ")
     print("Icache: ", icache_scheduler_fwif)
@@ -107,7 +108,8 @@ def dump_latches():
     print("  ", s(mem_icache_resp_if))
     print("ICache->Decode:")
     print("  ", s(icache_decode_if))
-    print(" ")
+    print("Decode->Issue:")
+    print("  ", s(decode_issue_if))
 
 def call_stages(debug=False):
     # compute order is called in reverse: 
@@ -121,22 +123,28 @@ def call_stages(debug=False):
     # step #1: initiate computes to pass through dummy instructions
     # until we reach the first real fetch from TBS
 
-    if (debug): 
-        dump_latches()
+    print("\n")
 
-    if icache_decode_if.valid: # should be ture if i didnt inject bs
-        instr = icache_decode_if.pop()
-        print(f"[dummy_DECODE] Received Instruction: {instr}")
-    else:
-        print("[dummy_DECODE] No instruction received.")
-
+    # dummy issue stage pop
     if (debug):
         dump_latches()
 
-    # icache_stage.compute() # Icache getting MemResp
-    
-    # if (debug):
-    #     dump_latches()
+    updated_instruction = None
+    if decode_issue_if.valid:
+        updated_instruction = decode_issue_if.pop()
+
+    if updated_instruction is None:
+        print("[Issue] Did not receive any valid instruction in this cycle.")
+    else:
+        print(f"[Issue] Received {updated_instruction}")
+
+    if (debug): 
+        dump_latches()
+
+    decode_stage.compute()
+
+    if (debug):
+        dump_latches()
 
     memc.compute() # MemController servicing ICache req
     if (debug):
@@ -149,16 +157,19 @@ def call_stages(debug=False):
     inst = scheduler_stage.compute() # Scheduler fetching from ICache
     if (debug):
         dump_latches()
-        
-    print(f"\nTBS fetched warp {inst.warp} group {inst.warpGroup} pc 0x{inst.pc:X}\n")
+    
+    if inst.warp_id == 1000 and inst.warp_group_id == 1000:
+        print("\nTBS received some randomw bullshit.\n")
+    else:
+        print(f"\nTBS fetched warp {inst.warp_id} group {inst.warp_group_id} pc 0x{inst.pc:X}\n")
 
-def cycle(cycles = scheduler_stage.warp_count):
-    for i in range(cycles):
-        group, warp, pc = scheduler_stage.compute()
-    return group, warp, pc
+def cycle(num_cycles):
+    for i in range(num_cycles):
+        print(f"Cycle #{i}")
+        call_stages(debug=False)
 
 def test_fetch(LAT=2, START_PC=4, WARP_COUNT=6):
-    print("Scheduler to ICacheStage Requests Test")
+    print("Scheduler to ICacheStage Requests Test\n")
 
     warp_id = 0
     total_cycles = 15
@@ -183,96 +194,13 @@ def test_fetch(LAT=2, START_PC=4, WARP_COUNT=6):
     branch_scheduler_fwif.payload = None
     writeback_scheduler_fwif.payload = None
 
-    # first set of instructions: fill in the pipeline. 
-    dummy_Instruction = Instruction(
-        iid=0,
-        pc=Bits(uint=0, length=32),
-        intended_FSU=None,
-        warp=0,
-    )
-
-    sched_icache_dummy_Instruction = Instruction(
-        iid=0,
-        pc=Bits(uint=0, length=32),
-        intended_FSU=None,
-        warp=0,
-        warpGroup=None
-    )
-
-    icache_mem_req_dummy_Instruction = {
-            "addr": 0,
-            "size": 4,
-            "uuid": 0,
-            "warp_id": 0,
-            "pc": 0,
-            "data": 0,
-            "rw_mode": "read",
-            "remaining": LAT
-    }
-
-    dummy_dcache_mem_req_Instruction = {
-        "addr": 0,
-        "size": 4,
-        "uuid": 0,
-        "warp_id": 0,
-        "pc": 0,
-        "data": 0,
-        "rw_mode": "read",
-        "remaining": LAT
-    }
-
-    mem_icache_resp_dummy_Instruction = Instruction(
-        iid=0,
-        pc=Bits(uint=0, length=32),
-        intended_FSU=None,
-        warp=0,
-        warpGroup=None,
-        packet=Bits(uint=0, length=32
-        ))
-
-    icache_decode_dummy_Instruction = Instruction(
-        iid=0,
-        pc=Bits(hex='ABABABAB', length=32),
-        intended_FSU=None,
-        warp=0,
-        warpGroup=None,
-        opcode=None,
-        rs1=0,
-        rs2=0,
-        rd=0
-    )
-
     # setup some bullshit at the beginning for the latches 
     # this is initializing the latches for ONE cycle.
 
     tbs_ws_if.push({"warp_id": warp_id, 
                     "pc": START_PC + warp_id * 4})
-
     
-    call_stages(debug=False)  # cycle -2
-
-    input("---- Press Enter to continue to cycle #2 ----")
-    
-    call_stages(debug=False)  # cycle -1
-
-    input("---- Press Enter to continue to cycle #3 ----")
-    
-    call_stages(debug=False) # cycle 0
-
-    input("---- Press Enter to continue to cycle #4 ----")
-    
-    call_stages(debug=False)  # cycle -1
-
-    input("---- Press Enter to continue to cycle #5 ----")
-    
-    call_stages(debug=False) # cycle 0
-
-    input("---- Press Enter to continue to cycle #5 ----")
-    
-    call_stages(debug=False) # cycle 1
-
-    
-
+    cycle(num_cycles=35)
 
 
 if __name__ == "__main__":
