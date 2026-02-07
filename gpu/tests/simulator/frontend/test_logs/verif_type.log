@@ -1,0 +1,646 @@
+Scheduler to ICacheStage Requests Test
+
+Cycle #0
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] Received from TBS: {'warp_id': 0, 'pc': 4}
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 0 group 0 pc 0x4
+
+Cycle #1
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] MISS warp=0 group=0 pc=0x4
+[ICache] Memrequest ACCEPTED by Memory.
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: False
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[Scheduler] Stalling pipeline due to Icache miss!
+
+TBS received some randomw bullshit.
+
+Cycle #2
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[MemController] Starting MemReq {'addr': 4, 'size': 4, 'uuid': 1, 'pc': 4, 'warp': 0, 'warpGroup': 0, 'inst': Instruction(pc=4, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None), 'src': 'icache', 'warp_id': 0, 'warp_group_id': 0}
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #3
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #4
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[Memory] Returning data: b'X"}\x80'
+[ICache] Received request: None
+[ICache] Received Response from Memory: Instruction(pc=4, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] FILL complete: pc=0x4
+[ICache] HIT through Memory
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 1 group 0 pc 0x4
+
+Cycle #5
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=1, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=1 group=0 pc=0x4
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 0, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 2, 'warp_id': 0, 'pc': 4}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 2 group 1 pc 0x4
+
+Cycle #6
+
+
+[Issue] Received Instruction(pc=4, warp_id=0, warp_group_id=0, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=2, warp_group_id=1, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=2 group=1 pc=0x4
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 1, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 2, 'warp_id': 1, 'pc': 4}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 3 group 1 pc 0x4
+
+Cycle #7
+
+
+[Issue] Received Instruction(pc=4, warp_id=1, warp_group_id=0, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=3, warp_group_id=1, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=3 group=1 pc=0x4
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 2, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 2, 'warp_id': 2, 'pc': 4}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 4 group 2 pc 0x4
+
+Cycle #8
+
+
+[Issue] Received Instruction(pc=4, warp_id=2, warp_group_id=1, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=4, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=4 group=2 pc=0x4
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 3, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 2, 'warp_id': 3, 'pc': 4}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 5 group 2 pc 0x4
+
+Cycle #9
+
+
+[Issue] Received Instruction(pc=4, warp_id=3, warp_group_id=1, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=4, warp_id=5, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=5 group=2 pc=0x4
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 4, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 2, 'warp_id': 4, 'pc': 4}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 0 group 0 pc 0x8
+
+Cycle #10
+
+
+[Issue] Received Instruction(pc=4, warp_id=4, warp_group_id=2, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0x58227d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] MISS warp=0 group=0 pc=0x8
+[ICache] Memrequest ACCEPTED by Memory.
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 2, 'warp_id': 5, 'pc': 4}
+[SchedulerStage] Warp Issue Check, ICache Control: False
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[Scheduler] Stalling pipeline due to Icache miss!
+{'type': 2, 'warp_id': 5, 'pc': 4}
+
+TBS received some randomw bullshit.
+
+Cycle #11
+
+
+[Issue] Received Instruction(pc=4, warp_id=5, warp_group_id=2, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x58227d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[MemController] Starting MemReq {'addr': 8, 'size': 4, 'uuid': 2, 'pc': 8, 'warp': 0, 'warpGroup': 0, 'inst': Instruction(pc=8, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None), 'src': 'icache', 'warp_id': 0, 'warp_group_id': 0}
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #12
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #13
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[Memory] Returning data: b'\xd8B}\x80'
+[ICache] Received request: None
+[ICache] Received Response from Memory: Instruction(pc=8, warp_id=0, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] FILL complete: pc=0x8
+[ICache] HIT through Memory
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 1 group 0 pc 0x8
+
+Cycle #14
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=1, warp_group_id=0, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=1 group=0 pc=0x8
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 0, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 0, 'pc': 8}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 2 group 1 pc 0x8
+
+Cycle #15
+
+
+[Issue] Received Instruction(pc=8, warp_id=0, warp_group_id=0, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=2, warp_group_id=1, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=2 group=1 pc=0x8
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 1, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 1, 'pc': 8}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 3 group 1 pc 0x8
+
+Cycle #16
+
+
+[Issue] Received Instruction(pc=8, warp_id=1, warp_group_id=0, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=3, warp_group_id=1, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=3 group=1 pc=0x8
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 2, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 2, 'pc': 8}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 4 group 2 pc 0x8
+
+Cycle #17
+
+
+[Issue] Received Instruction(pc=8, warp_id=2, warp_group_id=1, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=4, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=4 group=2 pc=0x8
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 3, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 3, 'pc': 8}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 5 group 2 pc 0x8
+
+Cycle #18
+
+
+[Issue] Received Instruction(pc=8, warp_id=3, warp_group_id=1, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=8, warp_id=5, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] HIT through Cache, warp=5 group=2 pc=0x8
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 4, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 4, 'pc': 8}
+[Scheduler] Pushing inst to ahead latch
+
+TBS fetched warp 4 group 2 pc 0xC
+
+Cycle #19
+
+
+[Issue] Received Instruction(pc=8, warp_id=4, warp_group_id=2, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode]: Received Raw Instruction Data: 0xd8427d80
+[MemController] compute: inflight = 0
+[ICache] Received request: Instruction(pc=12, warp_id=4, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] MISS warp=4 group=2 pc=0xC
+[ICache] Memrequest ACCEPTED by Memory.
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 5, 'pc': 8}
+[SchedulerStage] Warp Issue Check, ICache Control: False
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[Scheduler] Stalling pipeline due to Icache miss!
+{'type': 1, 'warp_id': 5, 'pc': 8}
+
+TBS received some randomw bullshit.
+
+Cycle #20
+
+
+[Issue] Received Instruction(pc=8, warp_id=5, warp_group_id=2, intended_FU='ADD', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<R_Op.ADD: Bits('0b0000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0xd8427d80'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[MemController] Starting MemReq {'addr': 12, 'size': 4, 'uuid': 3, 'pc': 12, 'warp': 4, 'warpGroup': 2, 'inst': Instruction(pc=12, warp_id=4, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=None, stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None), 'src': 'icache', 'warp_id': 4, 'warp_group_id': 2}
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #21
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[ICache] Received request: None
+[ICache] Still stalled, skipping new fetch
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #22
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 1
+[Memory] Returning data: b'\x82a \xc0'
+[ICache] Received request: None
+[ICache] Received Response from Memory: Instruction(pc=12, warp_id=4, warp_group_id=2, intended_FU=None, rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=None, opcode=None, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x826120c0'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[ICache] FILL complete: pc=0xC
+[ICache] HIT through Memory
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: True
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+
+TBS received some randomw bullshit.
+
+Cycle #23
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode]: Received Raw Instruction Data: 0x826120c0
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: {'type': 1, 'warp_id': 4, 'pc': 12}
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+{'type': 1, 'warp_id': 4, 'pc': 12}
+
+TBS received some randomw bullshit.
+
+Cycle #24
+
+
+[Issue] Received Instruction(pc=12, warp_id=4, warp_group_id=2, intended_FU='BRANCH', rs1=None, rs2=None, rd=None, src_pred=None, dest_pred=None, predicate=[True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True], opcode=<B_Op.BEQ: Bits('0b1000000')>, imm=None, rdat1=[], rdat2=[], wdat=[], packet=Bits('0x826120c0'), stage_entry={}, stage_exit={}, fu_entries=[], wb_cycle=None, target_bank=None)
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #25
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #26
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #27
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #28
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #29
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #30
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #31
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #32
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #33
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
+Cycle #34
+
+
+[Issue] Did not receive any valid instruction in this cycle.
+[Decode] Received nothing valid yet!
+[MemController] compute: inflight = 0
+[ICache] Received request: None
+[Scheduler_Stage] No request from TBS this cycle!
+[SchedulerStage] Warp Issue Check, Decode Control: None
+[SchedulerStage] Warp Issue Check, ICache Control: None
+[SchedulerStage] Warp Issue Check, Issue Control: None
+[SchedulerStage] Warp Issue Check, Branch Control: None
+[SchedulerStage] Warp Issue Check, Writeback Control: None
+[SchedulerStage] No control signals received...skipping collision detection.
+
+TBS received some randomw bullshit.
+
